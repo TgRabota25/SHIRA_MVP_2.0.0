@@ -41,6 +41,11 @@ def settings():
   loaded=json.loads((data_dir()/'settings-v2.json').read_text('utf-8'))
   if isinstance(loaded,dict):value.update(loaded)
  except (ValueError,OSError):pass
+ saved=value.get('patterns')
+ if isinstance(saved,list):
+  names={p.get('name') for p in saved if isinstance(p,dict)}
+  value['patterns']=(saved+[p for p in DEFAULT_PATTERNS if p['name'] not in names])[:30]
+ else:value['patterns']=list(DEFAULT_PATTERNS)
  if value.get('profile') not in PROFILES:value['profile']='weak'
  if value.get('mode') not in ('short','long'):value['mode']='short'
  try:value['long_step']=min(60,max(.1,float(value['long_step'])))
