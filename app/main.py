@@ -46,8 +46,8 @@ class Application:
   ttk.Button(bar,text='Настройки / шаблоны',command=self.preferences).pack(side='right')
   actions=ttk.Frame(frame);actions.pack(fill='x',pady=(0,6))
   ttk.Button(actions,text='Обработать очередь',command=self.start).pack(side='left');ttk.Button(actions,text='Стоп',command=self.stop).pack(side='left',padx=4)
-  ttk.Button(actions,text='Повторить выбранные',command=self.retry).pack(side='left');ttk.Button(actions,text='Сначала / переиндексировать',command=lambda:self.retry(True)).pack(side='left',padx=4)
-  ttk.Button(actions,text='Индекс этикеток',command=self.index).pack(side='left');ttk.Button(actions,text='Экспорт',command=self.export).pack(side='right');ttk.Button(actions,text='Бэкап БД',command=self.backup).pack(side='right',padx=4)
+  ttk.Button(actions,text='Повторить выбранные',command=self.retry).pack(side='left');ttk.Button(actions,text='Повторить пропуски',command=self.retry_gaps_ui).pack(side='left',padx=4);ttk.Button(actions,text='Сначала / переиндексировать',command=lambda:self.retry(True)).pack(side='left')
+  ttk.Button(actions,text='Индекс этикеток',command=self.index).pack(side='left',padx=4);ttk.Button(actions,text='Экспорт',command=self.export).pack(side='right');ttk.Button(actions,text='Бэкап БД',command=self.backup).pack(side='right',padx=4)
   filters=ttk.Frame(frame);filters.pack(fill='x',pady=5)
   ttk.Label(filters,text='Поиск по треку / пути:').pack(side='left');self.search=tk.StringVar();entry=ttk.Entry(filters,textvariable=self.search,width=37);entry.pack(side='left',padx=4);entry.bind('<Return>',lambda e:self.find())
   ttk.Button(filters,text='Найти',command=self.find).pack(side='left');self.state=tk.StringVar(value='Все статусы');self.filter_mode=tk.StringVar(value='Все сессии')
@@ -112,6 +112,13 @@ class Application:
   if self.engine.running():messagebox.showinfo('SHIRA','Сначала остановите обработку',parent=self.root);return
   if reset and not messagebox.askyesno('Переиндексация','Удалить текущие попадания выбранных заданий и начать сначала? Бэкап рекомендуется.',parent=self.root):return
   self.store.retry(keys,reset=reset);self.refresh();self.status.set(f'Возвращено в очередь: {len(keys)}. Нажмите «Обработать очередь».')
+ def retry_gaps_ui(self):
+  keys=self.selected()
+  if not keys:messagebox.showinfo('SHIRA','Выделите задания, у которых нужно повторить пропуски',parent=self.root);return
+  if self.engine.running():messagebox.showinfo('SHIRA','Сначала остановите обработку',parent=self.root);return
+  try:self.store.retry_gaps(keys)
+  except Exception as exc:messagebox.showerror('Повтор пропусков',str(exc),parent=self.root);return
+  self.refresh();self.status.set(f'Пропуски вернены в очередь: {len(keys)}. Нажмите «Обработать очередь».')
  def find(self):self.page=0;self.refresh()
  def clear_filter(self):self.search.set('');self.state.set('Все статусы');self.filter_mode.set('Все сессии');self.find()
  def sort_by(self,col):
@@ -152,7 +159,7 @@ class Application:
   row=self.tree.identify_row(event.y)
   if row and row not in self.selected():self.tree.selection_set(row)
   menu=tk.Menu(self.root,tearoff=False)
-  for label,fn in [('Проверить',self.review),('Копировать строки',self.copy_rows),('Копировать номера',self.copy_numbers),('Копировать пути',self.copy_paths),('Копировать файлы для письма',self.copy_selected_files),('Показать в папке',self.reveal),('Повторить выбранные',self.retry)]:menu.add_command(label=label,command=fn)
+  for label,fn in [('Проверить',self.review),('Копировать строки',self.copy_rows),('Копировать номера',self.copy_numbers),('Копировать пути',self.copy_paths),('Копировать файлы для письма',self.copy_selected_files),('Показать в папке',self.reveal),('Повторить выбранные',self.retry),('Повторить пропуски',self.retry_gaps_ui)]:menu.add_command(label=label,command=fn)
   menu.tk_popup(event.x_root,event.y_root)
  def double_click(self,event):
   if self.tree.identify_region(event.x,event.y) not in ('cell','tree'):return
