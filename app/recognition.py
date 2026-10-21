@@ -10,6 +10,26 @@ def native_limits():
  import cv2
  cv2.setNumThreads(1)
 
+def orient(cap):
+ # Учитывать метаданные поворота видео (телефонная съёмка).
+ import cv2
+ try:cap.set(cv2.CAP_PROP_ORIENTATION_AUTO,1)
+ except Exception:pass
+
+def read_frame(cap,ts):
+ # Последние кадры файла часто не читаются по времени: пробуем чуть раньше и по номеру кадра.
+ import cv2
+ try:fps=float(cap.get(cv2.CAP_PROP_FPS))
+ except Exception:fps=0
+ for back in (0,.05,.1,.2,.5,1.0):
+  t=max(0.0,float(ts)-back)
+  cap.set(cv2.CAP_PROP_POS_MSEC,t*1000);ok,frame=cap.read()
+  if ok and frame is not None:return True,frame
+  if math.isfinite(fps) and fps>0:
+   cap.set(cv2.CAP_PROP_POS_FRAMES,max(0,int(t*fps)));ok,frame=cap.read()
+   if ok and frame is not None:return True,frame
+ return False,None
+
 def patterns(cfg):
  out=[]
  configured=cfg.get('patterns',DEFAULT_PATTERNS)
@@ -75,7 +95,7 @@ def ocr(image,cfg,psm=11):
 def scaled(frame,width):
  import cv2
  h,w=frame.shape[:2]
- if max(h,w)>width:frame=cv2.resize(frame,(max(1,round(w*width/max(h,w))),max(1,round(h*width/max(h,w)))))
+ if max(h,w)>width:frame=cv2.resize(frame,(max(1,round(w*width/max(h,w))),max(1,round(h*width/max(h,w)))),interpolation=cv2.INTER_AREA)
  return frame
 
 def qr_regions(frame):
@@ -141,7 +161,7 @@ def save_evidence(frame,cfg,key,ts,number):
  folder=Path(cfg['data_dir'])/'evidence-v2'/key;folder.mkdir(parents=True,exist_ok=True)
  if shutil.disk_usage(folder).free<512*2**20:return ''
  digest=hashlib.sha256(number.encode()).hexdigest()[:10];path=folder/f'{ts:013.3f}-{digest}.jpg'
- ok,data=cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,82])
+ ok,data=cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,94])
  if not ok:return ''
  temp=path.with_suffix('.tmp');temp.write_bytes(data.tobytes());os.replace(temp,path);return str(path)
 
@@ -174,6 +194,7 @@ def scan(task,cfg,notify=lambda _:None):
   else:
    cap=cv2.VideoCapture(str(path))
    if not cap.isOpened():raise ValueError('Не удалось открыть видео или кодек')
+   orient(cap)
    fps=float(cap.get(cv2.CAP_PROP_FPS));count=float(cap.get(cv2.CAP_PROP_FRAME_COUNT))
    if not math.isfinite(fps) or not math.isfinite(count) or fps<=0 or count<=0:raise ValueError('Неизвестная длительность видео: требуется корректный индекс файла')
    duration=count/fps
@@ -191,7 +212,7 @@ def scan(task,cfg,notify=lambda _:None):
   for index,ts in enumerate(times):
    if frames is not None:frame=frames[0]
    else:
-    cap.set(cv2.CAP_PROP_POS_MSEC,float(ts*1000));ok,frame=cap.read()
+    ok,frame=read_frame(cap,ts)
     if not ok or frame is None:gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),'Не удалось декодировать кадр'));continue
    read+=1;frame=scaled(frame,cfg['width'])
    do_ocr=(index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0)
@@ -207,7 +228,7 @@ def scan(task,cfg,notify=lambda _:None):
   if not read and times:raise ValueError('Ни один кадр интервала не прочитан')
   if mode=='short':
    result=short_result(hits,unknown)
-   if gaps:result.update(state='review' if hits else 'error',detail=result['detail']+'; есть пропуски декодирования / OCR')
+   if gaps:result.update(state='review' if hits or unknown else 'error',detail=result['detail']+'; есть пропуски декодирования / OCR')
   else:
    result=dict(state='done' if end>=duration-1e-6 else 'pending',detail='Индексация: '+str(len(hits))+' наблюдений за интервал')
   result.update(hits=hits,cursor=end,duration=duration,gaps=gaps)
