@@ -36,12 +36,16 @@ class Engine:
   self.stop_event.clear();self.last_error=None;self.thread=threading.Thread(target=self.run,args=(max(1,min(4,concurrency)),),daemon=True);self.thread.start()
  def stop(self):self.stop_event.set()
  def run(self,concurrency):
-  ctx=multiprocessing.get_context('spawn');active={}
+  ctx=multiprocessing.get_context('spawn');active={};low_disk_notified=False
   try:
    while True:
     if self.stop_event.is_set():break
     while len(active)<concurrency:
-     if shutil.disk_usage(data_dir()).free<256*2**20:raise RuntimeError('Недостаточно места для БД: освободите минимум 256 МБ. Очередь сохранена.')
+     if shutil.disk_usage(data_dir()).free<256*2**20:
+      if not active:raise RuntimeError('Недостаточно места для БД: освободите минимум 256 МБ. Очередь сохранена.')
+      if not low_disk_notified:self.emit('log','Мало места на диске: новые задачи не берутся, текущие будут завершены');low_disk_notified=True
+      break
+     low_disk_notified=False
      task=self.store.claim()
      if not task:break
      cfg=json.loads(task['cfg']);cfg.update(root=str(Path(__file__).resolve().parents[1]),data_dir=str(data_dir()))
@@ -61,8 +65,7 @@ class Engine:
        for _ in range(100):
         if not rx.poll():break
         msg=rx.recv()
-        if msg['type']=='metadata':
-         with self.store.db() as db:db.execute('UPDATE tasks SET duration=? WHERE id=?',(msg['duration'],key))
+        if msg['type']=='metadata':self.store.set_duration(key,msg['duration'])
         elif msg['type']=='progress':self.emit('progress',dict(id=key,**msg))
         elif msg['type']=='result':result=msg['result'];break
         elif msg['type']=='failure':failure=msg['error'];fatal=msg.get('fatal',False);self.logger.error(msg.get('trace',''));break
@@ -74,12 +77,16 @@ class Engine:
        if result is not None:p.join(.5)
        if p.is_alive():kill_tree(p.pid)
       p.join(3);rx.close();close_job(item.get('job'));item['job']=None
+      if result is not None and failure is None:
+       try:self.store.checkpoint(key,result)
+       except Exception as exc:
+        self.logger.exception('Checkpoint failed');failure='Ошибка сохранения результата: '+str(exc);result=None
       if failure:
        if fatal:self.store.set_state(key,'error',failure)
        else:self.store.failed(key,failure)
        self.emit('error',item['task']['name']+': '+failure)
       else:
-       self.store.checkpoint(key,result);self.emit('log',item['task']['name']+': '+result['state'])
+       self.emit('log',item['task']['name']+': '+result['state'])
       active.pop(key,None);self.emit('changed',key)
     self.stop_event.wait(.05)
   except BaseException as exc:
