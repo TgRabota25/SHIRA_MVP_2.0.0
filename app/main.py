@@ -23,6 +23,14 @@ class Application:
    if kind in ('background_done','finished','error'):
     try:self.events.get_nowait();self.events.put_nowait((kind,value))
     except (queue.Empty,queue.Full):pass
+ def rot_file(self):return data_dir()/'rotations-v2.json'
+ def get_rotation(self,path):
+  try:return int(json.loads(self.rot_file().read_text('utf-8')).get(str(path),0))%360
+  except Exception:return 0
+ def set_rotation(self,path,degrees):
+  try:data=json.loads(self.rot_file().read_text('utf-8'))
+  except Exception:data={}
+  data[str(path)]=int(degrees)%360;atomic_json(self.rot_file(),data)
  def background(self,fn,label):
   self.busy+=1;self.status.set(label)
   def work():
@@ -34,7 +42,7 @@ class Application:
   frame=ttk.Frame(self.root,padding=10);frame.pack(fill='both',expand=True)
   header=ttk.Frame(frame);header.pack(fill='x')
   from PIL import Image,ImageTk
-  self.brand=ImageTk.PhotoImage(Image.open(ROOT/'app/icon.png').resize((42,42)))
+  self.brand=ImageTk.PhotoImage(Image.open(ROOT/'app/icon.png').convert('RGBA').resize((48,48),Image.LANCZOS))
   ttk.Label(header,image=self.brand).pack(side='left');ttk.Label(header,text='SHIRA • локальный видеоархив',font=('Segoe UI',16,'bold')).pack(side='left',padx=8)
   ttk.Button(header,text='Инструкция',command=lambda:self.safe_open(ROOT/'README_RU.md')).pack(side='right')
   bar=ttk.Frame(frame);bar.pack(fill='x',pady=8)
@@ -212,7 +220,7 @@ class Application:
   ttk.Label(frame,text='OCR на каждом N-м выбранном кадре (1 — весь шаг, медленнее):').pack(anchor='w');every=tk.StringVar(value=str(self.cfg['long_ocr_every']));ttk.Entry(frame,textvariable=every).pack(fill='x')
   ttk.Label(frame,text='Языки OCR:').pack(anchor='w');lang=tk.StringVar(value=self.cfg['language']);ttk.Combobox(frame,textvariable=lang,values=['rus+eng','eng','rus'],state='readonly').pack(fill='x')
   recursive=tk.BooleanVar(value=self.cfg.get('recursive',True));ttk.Checkbutton(frame,text='Добавлять вложенные папки',variable=recursive).pack(anchor='w')
-  ttk.Label(frame,text='Шаблоны JSON (regex, name, market). Пример: 81604409-0321-5 уже включён.').pack(anchor='w',pady=(10,0))
+  ttk.Label(frame,text='Шаблоны JSON (regex, name, market).').pack(anchor='w',pady=(10,0))
   text=tk.Text(frame,height=13,wrap='word');text.pack(fill='both',expand=True);text.insert('1.0',json.dumps(self.cfg['patterns'],ensure_ascii=False,indent=2))
   def save():
    try:
@@ -246,7 +254,10 @@ class Application:
    except Exception as exc:messagebox.showerror('Файл',str(exc),parent=win)
   ttk.Button(buttons,text='Копировать файл для письма',command=cf).pack(side='left');ttk.Button(buttons,text='Открыть видео',command=lambda:self.safe_open(row['path'])).pack(side='left',padx=4)
   info=ttk.Entry(frame,state='normal');info.insert(0,LABELS[row['state']]+' · '+row['detail']);info.configure(state='readonly');info.pack(fill='x')
-  image_label=ttk.Label(frame,text='Кадр не сохранён');image_label.pack(fill='both',expand=True,pady=8);self.load_image(image_label,row['evidence'],(950,400))
+  image_label=ttk.Label(frame,text='Кадр не сохранён');image_label.pack(fill='both',expand=True,pady=8);self.load_image(image_label,row['evidence'],(950,400),self.get_rotation(row['path']))
+  def turn(delta):
+   self.set_rotation(row['path'],self.get_rotation(row['path'])+delta);self.load_image(image_label,row['evidence'],(950,400),self.get_rotation(row['path']))
+  ttk.Button(buttons,text='Повернуть ↺',command=lambda:turn(-90)).pack(side='left',padx=(12,2));ttk.Button(buttons,text='Повернуть ↻',command=lambda:turn(90)).pack(side='left')
   hits,total=self.store.hits(key);text=tk.Text(frame,height=5,wrap='word');text.pack(fill='x')
   for hit in hits:text.insert('end',f"{hit['number']} · {hit['market']} · {stamp(hit['ts'])} · {hit['method']}\n")
   text.configure(state='disabled');edit=ttk.Frame(frame);edit.pack(fill='x',pady=6);ttk.Label(edit,text='Номер:').pack(side='left');number=tk.StringVar(value=row['number']);ttk.Entry(edit,textvariable=number,width=40).pack(side='left',padx=4);market=tk.StringVar(value=row['market']);ttk.Entry(edit,textvariable=market,width=22).pack(side='left')
@@ -254,11 +265,13 @@ class Application:
    try:self.store.confirm(key,number.get(),market.get());self.refresh();win.destroy()
    except Exception as exc:messagebox.showerror('Проверка',str(exc),parent=win)
   foot=ttk.Frame(frame);foot.pack(fill='x');ttk.Button(foot,text='Подтвердить номер',command=confirm).pack(side='left');ttk.Button(foot,text='История',command=lambda:self.history(key)).pack(side='left',padx=4);ttk.Button(foot,text='Индекс / все кадры',command=lambda:self.index(key)).pack(side='left');ttk.Button(foot,text='Закрыть',command=win.destroy).pack(side='right')
- def load_image(self,label,path,size):
+ def load_image(self,label,path,size,rotation=0):
   if not path or not Path(path).is_file():return
   try:
    from PIL import Image,ImageTk
-   with Image.open(path) as source:im=source.copy();im.thumbnail(size)
+   with Image.open(path) as source:im=source.copy()
+   if rotation%360:im=im.rotate(-(rotation%360),expand=True)
+   im.thumbnail(size,Image.LANCZOS)
    label._photo=ImageTk.PhotoImage(im);label.configure(image=label._photo,text='')
   except Exception as exc:label.configure(text='Ошибка кадра: '+str(exc))
  def history(self,key):
@@ -289,12 +302,16 @@ class IndexWindow:
   for col,label,width in zip(cols,['Номер','Время','Источник','Проверка','Видео','Путь'],[190,110,150,120,220,350]):self.tree.heading(col,text=label,command=lambda c=col:self.sort_by(c));self.tree.column(col,width=width)
   self.tree.pack(fill='x',pady=7);self.tree.bind('<<TreeviewSelect>>',lambda e:self.select());self.tree.bind('<Control-c>',self.copy);self.tree.bind('<Control-a>',lambda e:self.tree.selection_set(self.tree.get_children()));self.tree.bind('<Double-1>',lambda e:self.preview())
   actions=ttk.Frame(frame);actions.pack(fill='x')
-  for label,fn in [('Кадр по таймкоду',self.preview),('Открыть видео',self.open_video),('К файлу',self.reveal),('Копировать строки',self.copy),('Копировать путь',self.copy_path),('Подтвердить трек',self.confirm),('Сводка',self.summary)]:ttk.Button(actions,text=label,command=fn).pack(side='left',padx=2)
+  for label,fn in [('Кадр по таймкоду',self.preview),('Открыть видео',self.open_video),('К файлу',self.reveal),('Копировать строки',self.copy),('Копировать путь',self.copy_path),('Подтвердить трек',self.confirm),('Сводка',self.summary),('Повернуть ↺',lambda:self.rotate(-90)),('Повернуть ↻',lambda:self.rotate(90))]:ttk.Button(actions,text=label,command=fn).pack(side='left',padx=2)
   self.path=tk.StringVar();ttk.Entry(frame,textvariable=self.path,state='readonly').pack(fill='x',pady=5)
   self.image=ttk.Label(frame,text='Выберите этикетку. Двойной щелчок — кадр на её таймкоде.');self.image.pack(fill='both',expand=True)
   ttk.Label(frame,text='Время — позиция выбранного кадра, не точные границы появления этикетки. Поиск показывает наблюдения, а не гарантированный список всех посылок.').pack(fill='x')
   if key:ttk.Button(frame,text='Пропуски и история этого видео',command=lambda:app.history(key)).pack(anchor='w')
   self.refresh()
+ def rotate(self,delta):
+  r=self.selected()
+  if not r:return
+  self.app.set_rotation(r['path'],self.app.get_rotation(r['path'])+delta);self.select()
  def sort_by(self,col):
   if self.sort==col:self.desc=not self.desc
   else:self.sort=col;self.desc=False
@@ -316,7 +333,7 @@ class IndexWindow:
   keys=self.tree.selection();return self.rows.get(keys[0]) if keys else None
  def select(self):
   r=self.selected()
-  if r:self.path.set(r['path']);self.app.load_image(self.image,r['evidence'],(1100,390))
+  if r:self.path.set(r['path']);self.app.load_image(self.image,r['evidence'],(1100,390),self.app.get_rotation(r['path']))
  def copy(self,event=None):return self.app.clipboard('\n'.join('\t'.join(str(x) for x in self.tree.item(k,'values')) for k in self.tree.selection()))
  def copy_path(self):
   r=self.selected()
@@ -349,7 +366,8 @@ class IndexWindow:
     from recognition import kill_tree
     kill_tree(self.proc.pid);self.proc.wait(3);self.info.set('Тайм-аут извлечения кадра');self.cleanup();return
    self.win.after(150,self.poll);return
-  if self.proc.returncode==0:self.app.load_image(self.image,self.temp,(1100,390));self.info.set('Кадр на выбранном таймкоде')
+  if self.proc.returncode==0:
+   r=self.selected();self.app.load_image(self.image,self.temp,(1100,390),self.app.get_rotation(r['path']) if r else 0);self.info.set('Кадр на выбранном таймкоде')
   else:self.info.set('Не удалось прочитать кадр. Возможно, исходник перемещён или кодек не поддержан.')
   self.cleanup()
  def cleanup(self):
@@ -360,9 +378,20 @@ class IndexWindow:
    kill_tree(self.proc.pid);self.proc.wait(3)
   self.cleanup();self.win.destroy()
 
+def enable_dpi():
+ if os.name!='nt':return
+ import ctypes
+ try:ctypes.windll.shcore.SetProcessDpiAwareness(2)
+ except Exception:
+  try:ctypes.windll.user32.SetProcessDPIAware()
+  except Exception:pass
+
 def main():
  app_identity();lock=AppLock()
  try:
-  lock.acquire();root=tk.Tk();Application(root,Store());root.mainloop()
+  lock.acquire();enable_dpi();root=tk.Tk()
+  try:root.tk.call('tk','scaling',root.winfo_fpixels('1i')/72.0)
+  except tk.TclError:pass
+  Application(root,Store());root.mainloop()
  finally:lock.close()
 if __name__=='__main__':multiprocessing.freeze_support();main()
