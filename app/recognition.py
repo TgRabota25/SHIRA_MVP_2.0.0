@@ -6,6 +6,9 @@ class FatalInputError(ValueError):pass
 IMAGES={'.png','.jpg','.jpeg','.bmp','.tif','.tiff','.webp'}
 TAIL_SAFE=0.15
 TAIL_IGNORE=0.3
+CONF=str.maketrans('OoIl|SBZ','00111582')
+SEP=r'(?:\s*[-–—_.~=:]\s*|\s+)'
+FUZZY=re.compile(r'(?<![\dA-Za-z])([\dOoIl|SBZ]{8})'+SEP+r'([\dOoIl|SBZ]{4})'+SEP+r'([\dOoIl|SBZ])(?![\dA-Za-z])')
 
 def native_limits():
  for key in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS']:os.environ[key]='1'
@@ -46,6 +49,14 @@ def extract(text,cfg,source='text'):
     digits=re.sub(r'\D','',number);number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
    value=(number,market,name)
    if not any(existing[0]==number for existing in out):out.append(value)
+ if source!='qr':
+  # Допуск OCR: O/o->0, I/l/|->1, S->5, B->8, Z->2 и пробелы вместо дефисов в формате 8-4-1.
+  for m in FUZZY.finditer(text):
+   if sum(ch.isdigit() for ch in m.group(0))<9:continue
+   a,b,c=[g.translate(CONF) for g in m.groups()]
+   if not (a+b+c).isdigit():continue
+   number=a+'-'+b+'-'+c
+   if not any(existing[0]==number for existing in out):out.append((number,'Шаблон 8-4-1','Этикетка 8-4-1 мягкий'))
  return out
 
 def tesseract_binary(cfg):
@@ -120,27 +131,31 @@ def roi_images(frame,regions):
  out.append(frame)
  return out[:3] if len(out)>3 else out
 
-def recognize_frame(frame,cfg,do_ocr=True):
+def recognize_frame(frame,cfg,do_ocr=True,anchor_ocr=False):
  import cv2
  codes,regions=qr_regions(frame);findings=[];raw_codes=[]
  for code in codes:
   raw=str(code.text)[:2000];raw_codes.append(raw)
   for number,market,template in extract(raw,cfg,source='qr'):findings.append(dict(number=number,market=market,method='QR / штрихкод',raw=raw,template=template,weak=('мягкий' in template)))
- # Даже если QR содержит подходящий номер, проверяем текст этикетки: QR может быть служебным.
- if do_ocr:
+ # QR может быть служебным: текст этикетки проверяем всегда, а при найденном QR — даже на кадре без плановой очереди OCR.
+ if do_ocr or (anchor_ocr and regions):
   seen=set()
   for index,image in enumerate(roi_images(frame,regions)):
-   region_found=False
+   region_found=False;anchored=bool(regions) and index<len(regions)
    for rotation in (0,90,180,270):
     rotated=image if rotation==0 else cv2.rotate(image,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
     gray=cv2.cvtColor(rotated,cv2.COLOR_BGR2GRAY) if len(rotated.shape)==3 else rotated
-    gray=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(gray)
-    text=ocr(gray,cfg,11)
-    for number,market,template in extract(text,cfg):
-     key=(number,index)
-     if key in seen:continue
-     seen.add(key);region_found=True
-     findings.append(dict(number=number,market=market,method='QR-якорный OCR' if regions and index<len(regions) else 'OCR',raw=text[:2000],template=template,weak=('мягкий' in template)))
+    variants=[(cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(gray),11)]
+    if anchored:
+     _,bw=cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU);variants.append((bw,6))
+    for prepared,psm in variants:
+     text=ocr(prepared,cfg,psm)
+     for number,market,template in extract(text,cfg):
+      key=(number,index)
+      if key in seen:continue
+      seen.add(key);region_found=True
+      findings.append(dict(number=number,market=market,method='QR-якорный OCR' if anchored else 'OCR',raw=text[:2000],template=template,weak=('мягкий' in template)))
+     if region_found:break
     if region_found:break
    if region_found:break
  if not findings and raw_codes:findings.append(dict(number='',market='',method='QR без трека',raw='\n'.join(raw_codes)[:2000],template=''))
@@ -160,7 +175,8 @@ def short_result(hits,unknown=False,evidence=''):
  if not valid:return dict(state='review' if unknown else 'not_found',number='',market='',evidence=evidence if unknown else '',detail='QR найден, трек по шаблонам не найден' if unknown else 'Трек не найден')
  best=max(unique,key=lambda n:(len({h['ts'] for h in valid if h['number']==n}),sum(h['method']=='QR / штрихкод' for h in valid if h['number']==n),n))
  selected=[h for h in valid if h['number']==best];first=selected[0]
- reliable=(any(h['method']=='QR / штрихкод' for h in selected) or len({h['ts'] for h in selected})>=2) and any(not h.get('weak') for h in selected)
+ strict_anchor=any(h['method']=='QR-якорный OCR' and not h.get('weak') for h in selected)
+ reliable=(any(h['method']=='QR / штрихкод' for h in selected) or len({h['ts'] for h in selected})>=2 or strict_anchor) and any(not h.get('weak') for h in selected)
  state='done' if reliable and len(unique)==1 else 'review'
  detail='Согласованный номер' if state=='done' else 'Несколько номеров: проверьте этикетку' if len(unique)>1 else 'Текст подтверждён только одним кадром'
  return dict(state=state,number=best,market=first['market'],evidence=first.get('evidence',''),detail=detail)
@@ -213,7 +229,8 @@ def scan(task,cfg,notify=lambda _:None):
     if not ok or frame is None:gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),'Не удалось декодировать кадр'));continue
    read+=1;frame=scaled(rotate_frame(frame,rot),cfg['width'])
    do_ocr=(index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0)
-   try:found=recognize_frame(frame,cfg,do_ocr)
+   anchor=(mode=='short' and not any(h['number'] for h in hits))
+   try:found=recognize_frame(frame,cfg,do_ocr,anchor)
    except (TimeoutError,RuntimeError) as exc:
     found=recognize_frame(frame,cfg,False);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
    for h in found:
@@ -221,7 +238,7 @@ def scan(task,cfg,notify=lambda _:None):
      unknown=True
      if not unknown_evidence:unknown_evidence=save_evidence(frame,cfg,task['id'],ts,'qr-no-track')
      continue
-    h.update(ts=round(ts,3),state='review' if 'OCR' in h['method'] or h.get('weak') else 'done')
+    h.update(ts=round(ts,3),state='review' if h.get('weak') or h['method']=='OCR' else 'done')
     if h['number'] not in evidence_cache:evidence_cache[h['number']]=save_evidence(frame,cfg,task['id'],ts,h['number'])
     h['evidence']=evidence_cache[h['number']];hits.append(h)
    notify(dict(type='progress',cursor=ts,duration=duration))
