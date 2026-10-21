@@ -6,14 +6,29 @@ EXTENSIONS={'.mp4','.avi','.mov','.mkv','.wmv','.m4v','.webm','.mpg','.mpeg','.p
 STATES={'pending','running','done','review','not_found','error','cancelled','partial','accepted'}
 LABELS=dict(pending='В очереди',running='Обработка',done='Распознано',review='Нужна проверка',not_found='Не найдено',error='Ошибка',cancelled='Остановлено',partial='Есть пропуски',accepted='Подтверждено')
 
+def like(text):
+ return '%'+text.replace('!','!!').replace('%','!%').replace('_','!_')+'%'
+
 def identity(path):
- p=Path(path).resolve();s=p.stat()
- if not p.is_file() or not s.st_size:raise ValueError('Пустой или недоступный файл')
+ p=Path(path).resolve()
+ if not p.is_file():raise ValueError('Пустой или недоступный файл')
+ s=p.stat()
+ if not s.st_size:raise ValueError('Пустой или недоступный файл')
  h=hashlib.sha256()
  with p.open('rb') as f:
   h.update(f.read(1024*1024))
   if s.st_size>1024*1024:f.seek(max(0,s.st_size-1024*1024));h.update(f.read(1024*1024))
  return hashlib.sha256((os.path.normcase(str(p))+f'|{s.st_size}|{s.st_mtime_ns}|'+h.hexdigest()).encode('utf-8')).hexdigest()
+
+def content_identity(path):
+ p=Path(path).resolve();size=p.stat().st_size;chunk=1024*1024
+ h=hashlib.sha256(str(size).encode())
+ with p.open('rb') as f:
+  if size<=chunk*4:h.update(f.read())
+  else:
+   for off in (0,size//4,size//2,(size*3)//4,size-chunk):
+    f.seek(max(0,min(off,size-chunk)));h.update(f.read(chunk))
+ return h.hexdigest()
 
 class AppLock:
  def __init__(self):self.file=None
@@ -61,9 +76,12 @@ class Store:
  def add(self,path,cfg):
   p=Path(path).resolve()
   if p.suffix.lower() not in EXTENSIONS:raise ValueError('Неподдерживаемое расширение')
-  fid=identity(p);key=hashlib.sha256((fid+'|'+cfg['mode']).encode()).hexdigest();now=time.time()
+  fid=identity(p);cid=content_identity(p);key=hashlib.sha256((fid+'|'+cfg['mode']).encode()).hexdigest();now=time.time()
   with self.db() as db:
-   cur=db.execute('INSERT OR IGNORE INTO tasks(id,path,name,mode,state,cfg,created,updated) VALUES(?,?,?,?,?,?,?,?)',(key,str(p),p.name,cfg['mode'],'pending',json.dumps(dict(cfg,source_id=fid),ensure_ascii=False),now,now))
+   try:dup=db.execute("SELECT id FROM tasks WHERE mode=? AND json_extract(cfg,'$.content_id')=? LIMIT 1",(cfg['mode'],cid)).fetchone()
+   except sqlite3.OperationalError:dup=None
+   if dup:return dup['id'],False
+   cur=db.execute('INSERT OR IGNORE INTO tasks(id,path,name,mode,state,cfg,created,updated) VALUES(?,?,?,?,?,?,?,?)',(key,str(p),p.name,cfg['mode'],'pending',json.dumps(dict(cfg,source_id=fid,content_id=cid),ensure_ascii=False),now,now))
    return key,bool(cur.rowcount)
  def get(self,key):
   with self.db() as db:
@@ -75,6 +93,8 @@ class Store:
    db.execute('BEGIN IMMEDIATE');row=db.execute("SELECT * FROM tasks WHERE state='pending' ORDER BY updated,created LIMIT 1").fetchone()
    if row is None:return None
    db.execute("UPDATE tasks SET state='running',attempts=attempts+1,updated=? WHERE id=?",(time.time(),row['id']));return dict(row)
+ def set_duration(self,key,duration):
+  with self.db() as db:db.execute('UPDATE tasks SET duration=? WHERE id=?',(duration,key))
  def checkpoint(self,key,result):
   if result['state'] not in STATES:raise ValueError('Недопустимый статус')
   with self.db() as db:
@@ -83,7 +103,8 @@ class Store:
    for h in result.get('hits',[]):
     db.execute('INSERT OR IGNORE INTO hits(task_id,number,market,ts,method,state,evidence,raw) VALUES(?,?,?,?,?,?,?,?)',(key,h['number'],h.get('market',''),round(h['ts'],3),h['method'],h.get('state','review'),h.get('evidence',''),h.get('raw','')[:2000]))
    for start,end,reason in result.get('gaps',[]):
-    db.execute('INSERT INTO gaps(task_id,start,end,reason) VALUES(?,?,?,?)',(key,start,end,reason))
+    if not db.execute('SELECT 1 FROM gaps WHERE task_id=? AND start IS ? AND end IS ?',(key,start,end)).fetchone():
+     db.execute('INSERT INTO gaps(task_id,start,end,reason) VALUES(?,?,?,?)',(key,start,end,reason))
    duration=result.get('duration',row['duration']);cursor=result.get('cursor',row['cursor'])
    if cursor+1e-6<row['cursor']:raise ValueError('Контрольная точка не может двигаться назад')
    state=result['state']
@@ -95,9 +116,13 @@ class Store:
    db.execute('UPDATE tasks SET state=?,cursor=?,duration=?,number=?,market=?,detail=?,evidence=?,failures=0,updated=? WHERE id=?',(state,cursor,duration,result.get('number',row['number']),result.get('market',row['market']),result.get('detail',''),result.get('evidence',row['evidence']),time.time(),key))
  def failed(self,key,reason):
   with self.db() as db:
-   row=db.execute('SELECT * FROM tasks WHERE id=?',(key,)).fetchone();cfg=json.loads(row['cfg']);fail=row['failures']+1
+   row=db.execute('SELECT * FROM tasks WHERE id=?',(key,)).fetchone()
+   if row is None:return
+   cfg=json.loads(row['cfg']);fail=row['failures']+1
    if row['mode']=='long' and row['duration']>0 and fail>=2:
-    end=min(row['duration'],row['cursor']+cfg['segment']);db.execute('INSERT INTO gaps(task_id,start,end,reason) VALUES(?,?,?,?)',(key,row['cursor'],end,str(reason)[:2000]))
+    end=min(row['duration'],row['cursor']+cfg['segment'])
+    if not db.execute('SELECT 1 FROM gaps WHERE task_id=? AND start IS ? AND end IS ?',(key,row['cursor'],end)).fetchone():
+     db.execute('INSERT INTO gaps(task_id,start,end,reason) VALUES(?,?,?,?)',(key,row['cursor'],end,str(reason)[:2000]))
     state='partial' if end>=row['duration']-.01 else 'pending'
     db.execute('UPDATE tasks SET state=?,cursor=?,failures=0,detail=?,updated=? WHERE id=?',(state,end,'Есть необработанный интервал: '+str(reason)[:1000],time.time(),key))
    else:
@@ -112,16 +137,31 @@ class Store:
     row=db.execute('SELECT * FROM tasks WHERE id=?',(key,)).fetchone()
     if not row or row['state']=='running':continue
     restart=reset or row['mode']=='short' or row['cursor']>=row['duration']>0
-    db.execute('INSERT INTO audit(task_id,at,action,payload) VALUES(?,?,?,?)',(key,time.time(),'retry_reset' if restart else 'resume',json.dumps(dict(row),ensure_ascii=False)))
+    saved=[dict(r) for r in db.execute('SELECT * FROM hits WHERE task_id=?',(key,))] if restart else []
+    db.execute('INSERT INTO audit(task_id,at,action,payload) VALUES(?,?,?,?)',(key,time.time(),'retry_reset' if restart else 'resume',json.dumps(dict(dict(row),hits=saved),ensure_ascii=False)))
     if restart:
      db.execute('DELETE FROM hits WHERE task_id=?',(key,));db.execute('DELETE FROM gaps WHERE task_id=?',(key,))
      db.execute("UPDATE tasks SET cursor=0,duration=0,number='',market='',evidence='' WHERE id=?",(key,))
     db.execute("UPDATE tasks SET state='pending',failures=0,detail='',updated=? WHERE id=?",(time.time(),key))
+ def retry_gaps(self,keys):
+  count=0
+  with self.db() as db:
+   for key in keys:
+    row=db.execute('SELECT * FROM tasks WHERE id=?',(key,)).fetchone()
+    if not row or row['state']=='running':continue
+    first=db.execute('SELECT min(start) FROM gaps WHERE task_id=?',(key,)).fetchone()[0]
+    if first is None:continue
+    pending=[dict(r) for r in db.execute('SELECT * FROM gaps WHERE task_id=?',(key,))]
+    db.execute('INSERT INTO audit(task_id,at,action,payload) VALUES(?,?,?,?)',(key,time.time(),'retry_gaps',json.dumps(dict(dict(row),gaps=pending),ensure_ascii=False)))
+    db.execute('DELETE FROM gaps WHERE task_id=?',(key,))
+    db.execute("UPDATE tasks SET cursor=?,state='pending',failures=0,detail='Повтор пропущенных интервалов',updated=? WHERE id=?",(max(0.0,first),time.time(),key));count+=1
+  return count
  def confirm(self,key,number,market,hit_id=None):
   number=number.strip()
   if not number or len(number)>200:raise ValueError('Введите номер длиной до 200 символов')
   with self.db() as db:
    row=db.execute('SELECT * FROM tasks WHERE id=?',(key,)).fetchone()
+   if row is None:raise KeyError(key)
    if row['state']=='running':raise ValueError('Остановите обработку перед исправлением')
    db.execute('INSERT INTO audit(task_id,at,action,payload) VALUES(?,?,?,?)',(key,time.time(),'manual',json.dumps(dict(previous=dict(row),number=number,market=market,hit_id=hit_id),ensure_ascii=False)))
    if hit_id:
@@ -132,7 +172,7 @@ class Store:
   allowed={'name':'t.name COLLATE NOCASE','state':'t.state','number':'t.number','mode':'t.mode','path':'t.path COLLATE NOCASE','cursor':'t.cursor','duration':'t.duration','created':'t.created','updated':'t.updated','market':'t.market','hit_count':'(SELECT count(*) FROM hits h WHERE h.task_id=t.id)'}
   order=allowed.get(sort,allowed['created']);clauses=[];params=[]
   if search:
-   needle='%'+search.replace('!','!!').replace('%','!%').replace('_','!_')+'%'
+   needle=like(search)
    clauses.append("(t.path LIKE ? ESCAPE '!' OR t.number LIKE ? ESCAPE '!' OR EXISTS(SELECT 1 FROM hits h WHERE h.task_id=t.id AND h.number LIKE ? ESCAPE '!'))");params.extend([needle]*3)
   if state:clauses.append('t.state=?');params.append(state)
   if mode:clauses.append('t.mode=?');params.append(mode)
@@ -144,7 +184,7 @@ class Store:
  def hits(self,key=None,search='',page=0,sort='ts',descending=False):
   clauses=[];params=[]
   if key:clauses.append('h.task_id=?');params.append(key)
-  if search:clauses.append('h.number LIKE ?');params.append('%'+search.replace('%','').replace('_','')+'%')
+  if search:clauses.append("h.number LIKE ? ESCAPE '!'");params.append(like(search))
   where=' WHERE '+' AND '.join(clauses) if clauses else ''
   with self.db() as db:
    allowed={'ts':'h.ts','number':'h.number','method':'h.method','state':'h.state','name':'t.name COLLATE NOCASE','path':'t.path COLLATE NOCASE'}
@@ -155,7 +195,7 @@ class Store:
  def summary(self,key=None,search='',limit=200):
   clauses=[];params=[]
   if key:clauses.append('h.task_id=?');params.append(key)
-  if search:clauses.append('h.number LIKE ?');params.append('%'+search.replace('%','').replace('_','')+'%')
+  if search:clauses.append("h.number LIKE ? ESCAPE '!'");params.append(like(search))
   where=' WHERE '+' AND '.join(clauses) if clauses else ''
   with self.db() as db:
    return [dict(r) for r in db.execute('SELECT h.number,t.path,t.name,min(h.ts) first_seen,max(h.ts) last_seen,count(DISTINCT h.ts) samples FROM hits h JOIN tasks t ON t.id=h.task_id'+where+' GROUP BY h.task_id,h.number ORDER BY t.path,min(h.ts) LIMIT ?',params+[limit])]
