@@ -4,11 +4,21 @@ from config import ROOT,DEFAULT_PATTERNS
 class FatalInputError(ValueError):pass
 
 IMAGES={'.png','.jpg','.jpeg','.bmp','.tif','.tiff','.webp'}
+TAIL_SAFE=0.15
+TAIL_IGNORE=0.3
 
 def native_limits():
  for key in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS']:os.environ[key]='1'
  import cv2
  cv2.setNumThreads(1)
+
+def rotate_frame(frame,degrees):
+ import cv2
+ d=int(degrees or 0)%360
+ if d==90:return cv2.rotate(frame,cv2.ROTATE_90_CLOCKWISE)
+ if d==180:return cv2.rotate(frame,cv2.ROTATE_180)
+ if d==270:return cv2.rotate(frame,cv2.ROTATE_90_COUNTERCLOCKWISE)
+ return frame
 
 def patterns(cfg):
  out=[]
@@ -75,7 +85,7 @@ def ocr(image,cfg,psm=11):
 def scaled(frame,width):
  import cv2
  h,w=frame.shape[:2]
- if max(h,w)>width:frame=cv2.resize(frame,(max(1,round(w*width/max(h,w))),max(1,round(h*width/max(h,w)))))
+ if max(h,w)>width:frame=cv2.resize(frame,(max(1,round(w*width/max(h,w))),max(1,round(h*width/max(h,w)))),interpolation=cv2.INTER_AREA)
  return frame
 
 def qr_regions(frame):
@@ -141,13 +151,13 @@ def save_evidence(frame,cfg,key,ts,number):
  folder=Path(cfg['data_dir'])/'evidence-v2'/key;folder.mkdir(parents=True,exist_ok=True)
  if shutil.disk_usage(folder).free<512*2**20:return ''
  digest=hashlib.sha256(number.encode()).hexdigest()[:10];path=folder/f'{ts:013.3f}-{digest}.jpg'
- ok,data=cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,82])
+ ok,data=cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,95])
  if not ok:return ''
  temp=path.with_suffix('.tmp');temp.write_bytes(data.tobytes());os.replace(temp,path);return str(path)
 
-def short_result(hits,unknown=False):
+def short_result(hits,unknown=False,evidence=''):
  valid=[h for h in hits if h['number']];unique={h['number'] for h in valid}
- if not valid:return dict(state='review' if unknown else 'not_found',number='',market='',detail='QR найден, трек по шаблонам не найден' if unknown else 'Трек не найден')
+ if not valid:return dict(state='review' if unknown else 'not_found',number='',market='',evidence=evidence if unknown else '',detail='QR найден, трек по шаблонам не найден' if unknown else 'Трек не найден')
  best=max(unique,key=lambda n:(len({h['ts'] for h in valid if h['number']==n}),sum(h['method']=='QR / штрихкод' for h in valid if h['number']==n),n))
  selected=[h for h in valid if h['number']==best];first=selected[0]
  reliable=(any(h['method']=='QR / штрихкод' for h in selected) or len({h['ts'] for h in selected})>=2) and any(not h.get('weak') for h in selected)
@@ -162,7 +172,8 @@ def scan(task,cfg,notify=lambda _:None):
  path=Path(task['path'])
  if not path.is_file():raise FatalInputError('Исходный файл отсутствует или перемещён')
  if identity(path)!=cfg['source_id']:raise FatalInputError('Исходный файл изменился: добавьте его заново')
- start=float(task['cursor']);mode=task['mode'];hits=[];unknown=False;cap=None;gaps=[]
+ start=float(task['cursor']);mode=task['mode'];hits=[];unknown=False;unknown_evidence='';cap=None;gaps=[]
+ rot=int(cfg.get('rotation',0) or 0)
  try:
   if path.suffix.lower() in IMAGES:
    from PIL import Image,ImageOps
@@ -174,6 +185,8 @@ def scan(task,cfg,notify=lambda _:None):
   else:
    cap=cv2.VideoCapture(str(path))
    if not cap.isOpened():raise ValueError('Не удалось открыть видео или кодек')
+   try:cap.set(cv2.CAP_PROP_ORIENTATION_AUTO,1)
+   except Exception:pass
    fps=float(cap.get(cv2.CAP_PROP_FPS));count=float(cap.get(cv2.CAP_PROP_FRAME_COUNT))
    if not math.isfinite(fps) or not math.isfinite(count) or fps<=0 or count<=0:raise ValueError('Неизвестная длительность видео: требуется корректный индекс файла')
    duration=count/fps
@@ -182,7 +195,7 @@ def scan(task,cfg,notify=lambda _:None):
     times=[];t=first
     while t<end-1e-6:times.append(max(0,t));t+=step
    else:
-    end=duration;times=np.linspace(0,max(0,(count-1)/fps),cfg['frames']).tolist()
+    end=duration;times=np.linspace(0,max(0,(count-1)/fps-TAIL_SAFE),cfg['frames']).tolist()
    frames=None
   notify(dict(type='metadata',duration=duration,cursor=start))
   if cfg.get('probe_only'):return dict(state='pending',duration=duration,cursor=start,hits=[])
@@ -192,22 +205,31 @@ def scan(task,cfg,notify=lambda _:None):
    if frames is not None:frame=frames[0]
    else:
     cap.set(cv2.CAP_PROP_POS_MSEC,float(ts*1000));ok,frame=cap.read()
+    if not ok or frame is None:
+     for back in (0.1,0.3,0.6):
+      if ts-back<0:break
+      cap.set(cv2.CAP_PROP_POS_MSEC,float((ts-back)*1000));ok,frame=cap.read()
+      if ok and frame is not None:break
     if not ok or frame is None:gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),'Не удалось декодировать кадр'));continue
-   read+=1;frame=scaled(frame,cfg['width'])
+   read+=1;frame=scaled(rotate_frame(frame,rot),cfg['width'])
    do_ocr=(index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0)
    try:found=recognize_frame(frame,cfg,do_ocr)
    except (TimeoutError,RuntimeError) as exc:
     found=recognize_frame(frame,cfg,False);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
    for h in found:
-    if not h['number']:unknown=True;continue
+    if not h['number']:
+     unknown=True
+     if not unknown_evidence:unknown_evidence=save_evidence(frame,cfg,task['id'],ts,'qr-no-track')
+     continue
     h.update(ts=round(ts,3),state='review' if 'OCR' in h['method'] or h.get('weak') else 'done')
     if h['number'] not in evidence_cache:evidence_cache[h['number']]=save_evidence(frame,cfg,task['id'],ts,h['number'])
     h['evidence']=evidence_cache[h['number']];hits.append(h)
    notify(dict(type='progress',cursor=ts,duration=duration))
   if not read and times:raise ValueError('Ни один кадр интервала не прочитан')
   if mode=='short':
-   result=short_result(hits,unknown)
-   if gaps:result.update(state='review' if hits else 'error',detail=result['detail']+'; есть пропуски декодирования / OCR')
+   result=short_result(hits,unknown,unknown_evidence)
+   real_gaps=[g for g in gaps if g[0]<duration-TAIL_IGNORE or g[2]!='Не удалось декодировать кадр']
+   if real_gaps:result.update(state='review' if (hits or unknown) else 'error',detail=result['detail']+'; есть пропуски декодирования / OCR')
   else:
    result=dict(state='done' if end>=duration-1e-6 else 'pending',detail='Индексация: '+str(len(hits))+' наблюдений за интервал')
   result.update(hits=hits,cursor=end,duration=duration,gaps=gaps)
