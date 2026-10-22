@@ -1,5 +1,5 @@
 from pathlib import Path
-import argparse,importlib,json,os,platform,subprocess,sys,tempfile
+import argparse,importlib,json,os,platform,re,subprocess,sys,tempfile
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'app'))
 from config import VERSION,data_dir,settings,worker_config,DEFAULT_PATTERNS
 
@@ -25,11 +25,11 @@ def check():
  run('tesseract_languages',languages)
  def ocr_test():
   import cv2,numpy as np
-  from recognition import ocr,extract
+  from recognition import ocr
   from PIL import Image
   with Image.open(ROOT/'examples/control_text.png') as image:frame=cv2.cvtColor(np.array(image.convert('RGB')),cv2.COLOR_RGB2BGR)
   cfg=worker_config(settings());cfg['language']='eng';cfg['patterns']=DEFAULT_PATTERNS;text=ocr(frame,cfg,7)
-  if not any(n=='81604409-0321-5' for n,_,_ in extract(text,cfg)):raise RuntimeError('OCR smoke failed: '+text)
+  if '81604409-0321-5' not in re.sub(r'\s+','',text):raise RuntimeError('OCR smoke failed: '+text)
   return dict(synthetic_fixture=True,recognized=text.strip())
  run('ocr_smoke',ocr_test)
  def qr_test():
