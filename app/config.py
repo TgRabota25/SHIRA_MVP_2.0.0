@@ -9,15 +9,15 @@ PROFILES={
  'powerful':dict(label='Мощный CPU',workers=4,frames=24,ocr_frames=8,width=1920,segment=60,timeout=900,ocr_timeout=20)}
 DEFAULT_PATTERNS=[
  {'name':'Ozon ii','market':'Ozon','regex':r'(?<![A-Za-z0-9])[iI]{2}\s*\d{11}(?!\d)'},
- {'name':'Ozon старый','market':'Ozon','regex':r'(?<!\d)\d{6}\s*\d{4}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d{1,3}(?!\d)'},
+ {'name':'Ozon старый','market':'Ozon','regex':r'(?<!\d)\d{6}\s*\d{4}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
  {'name':'Этикетка 10-4-1','market':'Ozon','regex':r'(?<!\d)\d{10}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
- {'name':'Этикетка 8-4-1','market':'Шаблон 8-4-1','regex':r'(?<!\d)\d{8}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
  {'name':'Яндекс груз','market':'Yandex Market','regex':r'(?<!\d)\d{11}\s*[-–—]\s*\d{1,3}(?!\d)'},
  {'name':'Ozon ii мягкий','market':'Ozon','regex':r'(?<![A-Za-z0-9])[iI]{2}\s*\d{10,12}(?!\d)'},
- {'name':'Ozon пробелы мягкий','market':'Ozon','regex':r'(?<!\d)\d{6}\s+\d{4}\s+\d{4}\s+\d{1,3}(?!\d)'},
- {'name':'Этикетка 10-4-1 мягкий','market':'Ozon','regex':r'(?<!\d)\d{4,6}\s?\d{4,6}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
+ {'name':'Ozon пробелы мягкий','market':'Ozon','regex':r'(?<!\d)\d{6}\s+\d{4}\s+\d{4}\s+\d(?!\d)'},
+ {'name':'Этикетка 10-4-1 мягкий','market':'Ozon','regex':r'(?<!\d)(?:\d{10}|\d{6}\s\d{4}|\d{5}\s\d{5})\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
  {'name':'Яндекс груз мягкий','market':'Yandex Market','regex':r'(?<!\d)\d{10,12}\s*[-–—]\s*\d{1,3}(?!\d)'},
  {'name':'Яндекс заказ QR мягкий','market':'Yandex Market','source':'qr','regex':r'^\d{11}$'}]
+REPLACED_PATTERNS={'Этикетка 8-4-1','Ozon старый','Ozon пробелы мягкий','Этикетка 10-4-1 мягкий'}
 def data_dir():
  p=Path(os.environ.get('SHIRA_DATA_DIR') or (Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'.local/share')))/'SHIRA_MVP'))
  p.mkdir(parents=True,exist_ok=True);return p
@@ -51,7 +51,7 @@ def _seconds(value,default=0.0):
 
 def _merge_patterns(saved):
  if not isinstance(saved,list):return list(DEFAULT_PATTERNS)
- fixed=[p for p in saved if not (isinstance(p,dict) and p.get('name')=='Этикетка 10-4-1 мягкий')]
+ fixed=[p for p in saved if not (isinstance(p,dict) and p.get('name') in REPLACED_PATTERNS)]
  names={p.get('name') for p in fixed if isinstance(p,dict)}
  return fixed+[p for p in DEFAULT_PATTERNS if p['name'] not in names]
 
