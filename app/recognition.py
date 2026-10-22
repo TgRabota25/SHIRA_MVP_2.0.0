@@ -8,6 +8,7 @@ TAIL_SAFE=0.15
 TAIL_IGNORE=0.3
 OCR_DIGITS=str.maketrans('OoQDlI|SBZ','0000111582')
 FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
+OCR_SAMPLES=[]
 
 def trace(cfg,message):
  # Подробный журнал сканирования: что и когда проверялось. Сбой записи не должен ронять обработку.
@@ -120,7 +121,9 @@ def ocr(image,cfg,psm=11):
   try:out,err=proc.communicate(timeout=cfg.get('ocr_timeout',15))
   except subprocess.TimeoutExpired:kill_tree(proc.pid);proc.communicate();raise TimeoutError('Превышен срок выполнения OCR')
   if proc.returncode:raise RuntimeError('Tesseract: '+err.decode('utf-8','replace')[:500])
-  return out.decode('utf-8','replace')[:50000]
+  text=out.decode('utf-8','replace')[:50000]
+  if len(OCR_SAMPLES)<40:OCR_SAMPLES.append(' '.join(text.split())[:200])
+  return text
 
 def scaled(frame,width):
  import cv2
@@ -145,7 +148,8 @@ def qr_regions(frame):
   except cv2.error:pass
  return decoded,regions
 
-def roi_images(frame,regions):
+def roi_images(frame,regions,full=None):
+ # frame: кадр, из которого вырезаются блоки (может быть исходным, без уменьшения); full: уменьшенный кадр целиком.
  import cv2
  h,w=frame.shape[:2];out=[]
  for x1,y1,x2,y2 in regions[:4]:
@@ -157,20 +161,25 @@ def roi_images(frame,regions):
    if max(crop.shape[:2])<900:
     crop=cv2.resize(crop,None,fx=min(3,900/max(crop.shape[:2])),fy=min(3,900/max(crop.shape[:2])),interpolation=cv2.INTER_CUBIC)
    out.append(crop)
- out.append(frame)
+ out.append(full if full is not None else frame)
  return out[:3] if len(out)>3 else out
 
-def recognize_frame(frame,cfg,do_ocr=True):
+def recognize_frame(frame,cfg,do_ocr=True,orig=None):
  import cv2
  fuzzy=bool(cfg.get('fuzzy_841',True))
  codes,regions=qr_regions(frame);findings=[];raw_codes=[]
+ src=frame;rg=regions
+ # QR ищем на уменьшенном кадре, а текст этикетки вырезаем из кадра в полном разрешении: мелкий текст при уменьшении теряется.
+ if orig is not None and regions and orig.shape[:2]!=frame.shape[:2]:
+  sx=orig.shape[1]/frame.shape[1];sy=orig.shape[0]/frame.shape[0]
+  src=orig;rg=[(int(a*sx),int(b*sy),int(c*sx),int(d*sy)) for a,b,c,d in regions]
  for code in codes:
   raw=str(code.text)[:2000];raw_codes.append(raw)
   for number,market,template in extract(raw,cfg,source='qr'):findings.append(dict(number=number,market=market,method='QR / штрихкод',raw=raw,template=template,weak=('мягкий' in template)))
  # Даже если QR содержит подходящий номер, проверяем текст этикетки: QR может быть служебным.
  if do_ocr:
   seen=set()
-  for index,image in enumerate(roi_images(frame,regions)):
+  for index,image in enumerate(roi_images(src,rg,frame)):
    region_found=False
    for rotation in (0,90,180,270):
     rotated=image if rotation==0 else cv2.rotate(image,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
@@ -187,7 +196,7 @@ def recognize_frame(frame,cfg,do_ocr=True):
   # Усиленный проход: QR есть, а трек в тексте не найден — увеличиваем блок у QR и бинаризуем.
   if regions and not any('OCR' in f['method'] for f in findings) and cfg.get('qr_strong_ocr',True):
    try:
-    crop=roi_images(frame,regions)[0]
+    crop=roi_images(src,rg,frame)[0]
     big=cv2.resize(crop,None,fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
     gray=cv2.cvtColor(big,cv2.COLOR_BGR2GRAY) if len(big.shape)==3 else big
     gray=cv2.GaussianBlur(gray,(3,3),0);_,bw=cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -273,19 +282,22 @@ def scan(task,cfg,notify=lambda _:None):
     else:
      ok,frame=read_frame(cap,ts)
      if not ok or frame is None:gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),'Не удалось декодировать кадр'));continue
-    read+=1;frame=scaled(rotate_frame(frame,rot),cfg['width'])
+    read+=1;orig=rotate_frame(frame,rot);frame=scaled(orig,cfg['width'])
     do_ocr=((pass_no==0 and index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0))
-    try:found=recognize_frame(frame,cfg,do_ocr)
+    del OCR_SAMPLES[:]
+    try:found=recognize_frame(frame,cfg,do_ocr,orig)
     except (TimeoutError,RuntimeError) as exc:
-     found=recognize_frame(frame,cfg,False);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
+     found=recognize_frame(frame,cfg,False,orig);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
     if do_ocr:ocr_done+=1
     # Короткая сессия: QR найден, трека в нём нет, а OCR на этом кадре не запускался — дочитываем текст этикетки.
     if mode=='short' and not do_ocr and cfg.get('qr_text_fallback',True) and fb_used<int(cfg.get('qr_text_fallback_max',12)) and found and not any(h['number'] for h in found):
-     fb_used+=1;ocr_done+=1
-     try:found=recognize_frame(frame,cfg,True)
+     fb_used+=1;ocr_done+=1;do_ocr=True
+     try:found=recognize_frame(frame,cfg,True,orig)
      except (TimeoutError,RuntimeError) as exc:warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
     if found:qr_frames+=1
-    if mode=='short':trace(cfg,'%s: проход %d, t=%.2f с, OCR=%s, найдено=%s'%(path.name,pass_no+1,ts,'да' if do_ocr else 'нет',[(h['number'] or 'QR без трека',h['method']) for h in found]))
+    if mode=='short':
+     qr_text=' | '.join(' '.join(h['raw'].split())[:120] for h in found if not h['number'])
+     trace(cfg,'%s: проход %d, t=%.2f с, OCR=%s, найдено=%s%s%s'%(path.name,pass_no+1,ts,'да' if do_ocr else 'нет',[(h['number'] or 'QR без трека',h['method']) for h in found],(', текст QR=['+qr_text+']') if qr_text else '',(', текст OCR=['+' || '.join(OCR_SAMPLES[:3])+']') if OCR_SAMPLES else ''))
     for h in found:
      if not h['number']:
       unknown=True
