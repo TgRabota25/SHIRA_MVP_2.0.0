@@ -30,6 +30,17 @@ def content_identity(path):
     f.seek(max(0,min(off,size-chunk)));h.update(f.read(chunk))
  return h.hexdigest()
 
+def refresh_cfg(old,fresh=None):
+ # Перенос текущих настроек в сохранённый cfg задания; режим и идентификаторы файла остаются прежними.
+ if isinstance(old,str):old=json.loads(old)
+ if fresh is None:
+  from config import settings,worker_config
+  fresh=worker_config(settings())
+ merged=dict(old);merged.update(fresh)
+ for key in ('mode','source_id','content_id'):
+  if key in old:merged[key]=old[key]
+ return merged
+
 class AppLock:
  def __init__(self):self.file=None
  def acquire(self):
@@ -78,9 +89,14 @@ class Store:
   if p.suffix.lower() not in EXTENSIONS:raise ValueError('Неподдерживаемое расширение')
   fid=identity(p);cid=content_identity(p);key=hashlib.sha256((fid+'|'+cfg['mode']).encode()).hexdigest();now=time.time()
   with self.db() as db:
-   try:dup=db.execute("SELECT id FROM tasks WHERE mode=? AND json_extract(cfg,'$.content_id')=? LIMIT 1",(cfg['mode'],cid)).fetchone()
+   try:dup=db.execute("SELECT id,state,cfg FROM tasks WHERE mode=? AND json_extract(cfg,'$.content_id')=? LIMIT 1",(cfg['mode'],cid)).fetchone()
    except sqlite3.OperationalError:dup=None
-   if dup:return dup['id'],False
+   if dup:
+    if dup['state']!='running':
+     try:merged=refresh_cfg(dup['cfg'],cfg)
+     except (ValueError,TypeError):merged=None
+     if merged is not None:db.execute('UPDATE tasks SET cfg=? WHERE id=?',(json.dumps(merged,ensure_ascii=False),dup['id']))
+    return dup['id'],False
    cur=db.execute('INSERT OR IGNORE INTO tasks(id,path,name,mode,state,cfg,created,updated) VALUES(?,?,?,?,?,?,?,?)',(key,str(p),p.name,cfg['mode'],'pending',json.dumps(dict(cfg,source_id=fid,content_id=cid),ensure_ascii=False),now,now))
    return key,bool(cur.rowcount)
  def get(self,key):
@@ -132,6 +148,10 @@ class Store:
   if state not in STATES:raise ValueError(state)
   with self.db() as db:db.execute('UPDATE tasks SET state=?,detail=?,updated=? WHERE id=?',(state,detail,time.time(),key))
  def retry(self,keys,reset=False):
+  try:
+   from config import settings,worker_config
+   fresh=worker_config(settings())
+  except Exception:fresh=None
   with self.db() as db:
    for key in keys:
     row=db.execute('SELECT * FROM tasks WHERE id=?',(key,)).fetchone()
@@ -142,6 +162,9 @@ class Store:
     if restart:
      db.execute('DELETE FROM hits WHERE task_id=?',(key,));db.execute('DELETE FROM gaps WHERE task_id=?',(key,))
      db.execute("UPDATE tasks SET cursor=0,duration=0,number='',market='',evidence='' WHERE id=?",(key,))
+    if fresh is not None:
+     try:db.execute('UPDATE tasks SET cfg=? WHERE id=?',(json.dumps(refresh_cfg(row['cfg'],fresh),ensure_ascii=False),key))
+     except (ValueError,TypeError):pass
     db.execute("UPDATE tasks SET state='pending',failures=0,detail='',updated=? WHERE id=?",(time.time(),key))
  def retry_gaps(self,keys):
   count=0
