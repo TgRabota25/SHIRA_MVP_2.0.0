@@ -15,7 +15,7 @@ DEFAULT_PATTERNS=[
  {'name':'Яндекс груз','market':'Yandex Market','regex':r'(?<!\d)\d{11}\s*[-–—]\s*\d{1,3}(?!\d)'},
  {'name':'Ozon ii мягкий','market':'Ozon','regex':r'(?<![A-Za-z0-9])[iI]{2}\s*\d{10,12}(?!\d)'},
  {'name':'Ozon пробелы мягкий','market':'Ozon','regex':r'(?<!\d)\d{6}\s+\d{4}\s+\d{4}\s+\d{1,3}(?!\d)'},
- {'name':'Этикетка 10-4-1 мягкий','market':'Ozon','regex':r'(?<!\d)\d{6,12}(?:\s?\d{3,6})?\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
+ {'name':'Этикетка 10-4-1 мягкий','market':'Ozon','regex':r'(?<!\d)\d{4,6}\s?\d{4,6}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
  {'name':'Яндекс груз мягкий','market':'Yandex Market','regex':r'(?<!\d)\d{10,12}\s*[-–—]\s*\d{1,3}(?!\d)'},
  {'name':'Яндекс заказ QR мягкий','market':'Yandex Market','source':'qr','regex':r'^\d{11}$'}]
 def data_dir():
@@ -51,8 +51,9 @@ def _seconds(value,default=0.0):
 
 def _merge_patterns(saved):
  if not isinstance(saved,list):return list(DEFAULT_PATTERNS)
- names={p.get('name') for p in saved if isinstance(p,dict)}
- return list(saved)+[p for p in DEFAULT_PATTERNS if p['name'] not in names]
+ fixed=[p for p in saved if not (isinstance(p,dict) and p.get('name')=='Этикетка 10-4-1 мягкий')]
+ names={p.get('name') for p in fixed if isinstance(p,dict)}
+ return fixed+[p for p in DEFAULT_PATTERNS if p['name'] not in names]
 
 def settings():
  value=dict(profile='balanced',mode='short',long_step=1.0,long_ocr_every=3,language='rus+eng',recursive=True,patterns=DEFAULT_PATTERNS,
