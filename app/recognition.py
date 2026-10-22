@@ -116,18 +116,19 @@ def assemble_split(texts):
 
 def assemble_global(texts):
  # Склейка по всем кадрам видео: 6 цифр из одного кадра + 4 цифры из другого, общий хвост -DDDD, последняя цифра из любого кадра.
+ # Варианты головы и середины выбираются голосованием по числу кадров (самые частые идут первыми).
  heads={};mids={};tails={}
  for text in texts:
   text=str(text)[:50000]
-  for m in GLUE_HEAD.finditer(text):heads.setdefault(m.group(2),set()).add(m.group(1))
-  for m in GLUE_MID.finditer(text):mids.setdefault(m.group(2),set()).add(m.group(1)[-4:])
+  for m in GLUE_HEAD.finditer(text):heads.setdefault(m.group(2),Counter())[m.group(1)]+=1
+  for m in GLUE_MID.finditer(text):mids.setdefault(m.group(2),Counter())[m.group(1)[-4:]]+=1
   for m in GLUE_TAIL.finditer(text):tails.setdefault(m.group(1),Counter())[m.group(2)]+=1
  out=[]
- for tail,hs in heads.items():
+ for tail,hs in sorted(heads.items(),key=lambda kv:-sum(kv[1].values())):
   if tail not in tails:continue
   last=tails[tail].most_common(1)[0][0]
-  for x in sorted(hs):
-   for y in sorted(mids.get(tail,())):
+  for x,_ in hs.most_common(2):
+   for y,_ in mids.get(tail,Counter()).most_common(2):
     number=x+y+'-'+tail+'-'+last
     if number not in out:out.append(number)
  return out[:3]
@@ -386,7 +387,7 @@ def scan(task,cfg,notify=lambda _:None):
      ok,frame=read_frame(cap,ts)
      if not ok or frame is None:gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),'Не удалось декодировать кадр'));continue
     read+=1;orig=rotate_frame(frame,rot);frame=scaled(orig,cfg['width'])
-    do_ocr=((pass_no==0 and index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0))
+    do_ocr=((pass_no>=1 or index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0))
     del OCR_SAMPLES[:]
     try:found=recognize_frame(frame,cfg,do_ocr,orig)
     except (TimeoutError,RuntimeError) as exc:
