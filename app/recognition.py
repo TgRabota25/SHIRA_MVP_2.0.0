@@ -1,4 +1,5 @@
 import hashlib,json,math,os,re,shutil,subprocess,tempfile,time
+from collections import Counter
 from pathlib import Path
 from config import ROOT,DEFAULT_PATTERNS
 class FatalInputError(ValueError):pass
@@ -11,7 +12,6 @@ FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([
 OCR_SAMPLES=[]
 
 def trace(cfg,message):
- # Подробный журнал сканирования: что и когда проверялось. Сбой записи не должен ронять обработку.
  try:
   folder=Path(cfg['data_dir'])/'logs';folder.mkdir(parents=True,exist_ok=True)
   path=folder/'scan-v2.log'
@@ -25,13 +25,11 @@ def native_limits():
  cv2.setNumThreads(1)
 
 def orient(cap):
- # Учитывать метаданные поворота видео (телефонная съёмка).
  import cv2
  try:cap.set(cv2.CAP_PROP_ORIENTATION_AUTO,1)
  except Exception:pass
 
 def read_frame(cap,ts):
- # Последние кадры файла часто не читаются по времени: пробуем чуть раньше и по номеру кадра.
  import cv2
  try:fps=float(cap.get(cv2.CAP_PROP_FPS))
  except Exception:fps=0
@@ -72,13 +70,11 @@ def extract(text,cfg,source='text',fuzzy=False):
   for match in regex.finditer(text):
    number=re.sub(r'\s+','',match.group(0)).replace('—','-').replace('–','-')
    if number.lower().startswith('ii'):number='ii'+number[2:]
-   # Яндекс с суффиксом внутри более длинного Ozon-номера не отдельный кандидат.
    if name.startswith('Яндекс груз') and ((match.start()>0 and text[match.start()-1]=='-') or (match.end()<len(text) and text[match.end()]=='-')):continue
    if name=='Ozon пробелы мягкий':
     digits=re.sub(r'\D','',number);number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
    value=(number,market,name)
    if not any(existing[0]==number for existing in out):out.append(value)
- # Мягкий разбор 8-4-1: типичные ошибки OCR (O/0, l/1, S/5, B/8, Z/2) и точки вместо тире.
  if fuzzy and source=='text':
   for match in FUZZY_841.finditer(text):
    raw=''.join(match.group(1,2,3))
@@ -132,32 +128,53 @@ def scaled(frame,width):
  return frame
 
 def qr_regions(frame):
+ # Возвращает декодированные коды, рамки и углы наклона QR (градусы, по верхнему краю символа).
  import cv2,zxingcpp
  decoded=zxingcpp.read_barcodes(frame,try_rotate=True,try_downscale=True)
- regions=[]
+ regions=[];angles=[]
  for code in decoded:
   p=code.position;points=[p.top_left,p.top_right,p.bottom_left,p.bottom_right]
   xs=[int(q.x) for q in points];ys=[int(q.y) for q in points]
   regions.append((min(xs),min(ys),max(xs),max(ys)))
+  angles.append(math.degrees(math.atan2(p.top_right.y-p.top_left.y,p.top_right.x-p.top_left.x)))
  if not regions:
   try:
    ok,points=cv2.QRCodeDetector().detectMulti(frame)
    if ok:
     for polygon in points:
      xs=polygon[:,0];ys=polygon[:,1];regions.append((int(xs.min()),int(ys.min()),int(xs.max()),int(ys.max())))
+     angles.append(math.degrees(math.atan2(polygon[1][1]-polygon[0][1],polygon[1][0]-polygon[0][0])))
   except cv2.error:pass
- return decoded,regions
+ return decoded,regions,angles
 
-def roi_images(frame,regions,full=None):
- # frame: кадр, из которого вырезаются блоки (может быть исходным, без уменьшения); full: уменьшенный кадр целиком.
+def upright_crop(frame,box,angle):
+ # Поворачивает область вокруг QR так, чтобы QR стоял прямо: текст этикетки рядом тоже становится прямым.
+ import cv2
+ x1,y1,x2,y2=box;cx=(x1+x2)/2;cy=(y1+y2)/2;h,w=frame.shape[:2]
+ size=max(x2-x1,y2-y1,20);r=int(size*9)
+ xa=max(0,int(cx-r));xb=min(w,int(cx+r));ya=max(0,int(cy-r));yb=min(h,int(cy+r))
+ part=frame[ya:yb,xa:xb]
+ if part.size==0:return None
+ lx=cx-xa;ly=cy-ya
+ m=cv2.getRotationMatrix2D((lx,ly),angle,1.0)
+ turned=cv2.warpAffine(part,m,(part.shape[1],part.shape[0]),flags=cv2.INTER_CUBIC,borderMode=cv2.BORDER_REPLICATE)
+ a=max(0,int(lx-3*size));b=min(turned.shape[1],int(lx+5*size));c=max(0,int(ly-3*size));d=min(turned.shape[0],int(ly+5*size))
+ crop=turned[c:d,a:b]
+ return crop if crop.size else None
+
+def roi_images(frame,regions,full=None,angles=None):
  import cv2
  h,w=frame.shape[:2];out=[]
- for x1,y1,x2,y2 in regions[:4]:
+ for i,(x1,y1,x2,y2) in enumerate(regions[:4]):
   size=max(x2-x1,y2-y1,20)
-  # Весь блок вокруг QR: текст может быть с любой стороны.
-  xa=max(0,x1-3*size);xb=min(w,x2+5*size);ya=max(0,y1-3*size);yb=min(h,y2+5*size)
-  crop=frame[ya:yb,xa:xb]
-  if crop.size:
+  crop=None
+  if angles and i<len(angles) and abs(angles[i])>3:
+   try:crop=upright_crop(frame,(x1,y1,x2,y2),angles[i])
+   except cv2.error:crop=None
+  if crop is None:
+   xa=max(0,x1-3*size);xb=min(w,x2+5*size);ya=max(0,y1-3*size);yb=min(h,y2+5*size)
+   crop=frame[ya:yb,xa:xb]
+  if crop is not None and crop.size:
    if max(crop.shape[:2])<900:
     crop=cv2.resize(crop,None,fx=min(3,900/max(crop.shape[:2])),fy=min(3,900/max(crop.shape[:2])),interpolation=cv2.INTER_CUBIC)
    out.append(crop)
@@ -167,19 +184,17 @@ def roi_images(frame,regions,full=None):
 def recognize_frame(frame,cfg,do_ocr=True,orig=None):
  import cv2
  fuzzy=bool(cfg.get('fuzzy_841',True))
- codes,regions=qr_regions(frame);findings=[];raw_codes=[]
+ codes,regions,angles=qr_regions(frame);findings=[];raw_codes=[]
  src=frame;rg=regions
- # QR ищем на уменьшенном кадре, а текст этикетки вырезаем из кадра в полном разрешении: мелкий текст при уменьшении теряется.
  if orig is not None and regions and orig.shape[:2]!=frame.shape[:2]:
   sx=orig.shape[1]/frame.shape[1];sy=orig.shape[0]/frame.shape[0]
   src=orig;rg=[(int(a*sx),int(b*sy),int(c*sx),int(d*sy)) for a,b,c,d in regions]
  for code in codes:
   raw=str(code.text)[:2000];raw_codes.append(raw)
   for number,market,template in extract(raw,cfg,source='qr'):findings.append(dict(number=number,market=market,method='QR / штрихкод',raw=raw,template=template,weak=('мягкий' in template)))
- # Даже если QR содержит подходящий номер, проверяем текст этикетки: QR может быть служебным.
  if do_ocr:
   seen=set()
-  for index,image in enumerate(roi_images(src,rg,frame)):
+  for index,image in enumerate(roi_images(src,rg,frame,angles)):
    region_found=False
    for rotation in (0,90,180,270):
     rotated=image if rotation==0 else cv2.rotate(image,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
@@ -193,10 +208,9 @@ def recognize_frame(frame,cfg,do_ocr=True,orig=None):
      findings.append(dict(number=number,market=market,method='QR-якорный OCR' if regions and index<len(regions) else 'OCR',raw=text[:2000],template=template,weak=('мягкий' in template)))
     if region_found:break
    if region_found:break
-  # Усиленный проход: QR есть, а трек в тексте не найден — увеличиваем блок у QR и бинаризуем.
   if regions and not any('OCR' in f['method'] for f in findings) and cfg.get('qr_strong_ocr',True):
    try:
-    crop=roi_images(src,rg,frame)[0]
+    crop=roi_images(src,rg,frame,angles)[0]
     big=cv2.resize(crop,None,fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
     gray=cv2.cvtColor(big,cv2.COLOR_BGR2GRAY) if len(big.shape)==3 else big
     gray=cv2.GaussianBlur(gray,(3,3),0);_,bw=cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
@@ -220,9 +234,25 @@ def save_evidence(frame,cfg,key,ts,number):
  if not ok:return ''
  temp=path.with_suffix('.tmp');temp.write_bytes(data.tobytes());os.replace(temp,path);return str(path)
 
+def near_groups(valid):
+ # Группирует чтения одинаковой длины, отличающиеся не более чем в 2 символах (типичные ошибки OCR).
+ groups=[]
+ for h in valid:
+  for g in groups:
+   a=g[0]['number']
+   if len(a)==len(h['number']) and sum(x!=y for x,y in zip(a,h['number']))<=2:g.append(h);break
+  else:groups.append([h])
+ return groups
+
 def short_result(hits,unknown=False,evidence=''):
  valid=[h for h in hits if h['number']];unique={h['number'] for h in valid}
  if not valid:return dict(state='review' if unknown else 'not_found',number='',market='',evidence=evidence if unknown else '',detail='QR найден, трек по шаблонам не найден' if unknown else 'Трек не найден')
+ if len(unique)>1:
+  groups=near_groups(valid)
+  if len(groups)==1:
+   g=groups[0];length=len(g[0]['number'])
+   merged=''.join(Counter(h['number'][i] for h in g).most_common(1)[0][0] for i in range(length))
+   return dict(state='review',number=merged,market=g[0]['market'],evidence=g[0].get('evidence',''),detail='Чтения OCR немного различаются ('+str(len({h['ts'] for h in g}))+' кадр.): выбран вариант по большинству, проверьте')
  best=max(unique,key=lambda n:(len({h['ts'] for h in valid if h['number']==n}),sum(h['method']=='QR / штрихкод' for h in valid if h['number']==n),n))
  selected=[h for h in valid if h['number']==best];first=selected[0]
  reliable=(any(h['method']=='QR / штрихкод' for h in selected) or len({h['ts'] for h in selected})>=2) and any(not h.get('weak') for h in selected)
@@ -231,7 +261,6 @@ def short_result(hits,unknown=False,evidence=''):
  return dict(state=state,number=best,market=first['market'],evidence=first.get('evidence',''),detail=detail)
 
 def short_window(cfg,count,fps):
- # Окно сканирования короткой сессии в секундах: [start, end]; end=0 означает «до конца видео».
  last=max(0.0,(count-1)/fps-TAIL_SAFE)
  try:ws=max(0.0,float(cfg.get('short_start',0) or 0));we=float(cfg.get('short_end',0) or 0)
  except (ValueError,TypeError):ws=0.0;we=0.0
@@ -289,7 +318,6 @@ def scan(task,cfg,notify=lambda _:None):
     except (TimeoutError,RuntimeError) as exc:
      found=recognize_frame(frame,cfg,False,orig);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
     if do_ocr:ocr_done+=1
-    # Короткая сессия: QR найден, трека в нём нет, а OCR на этом кадре не запускался — дочитываем текст этикетки.
     if mode=='short' and not do_ocr and cfg.get('qr_text_fallback',True) and fb_used<int(cfg.get('qr_text_fallback_max',12)) and found and not any(h['number'] for h in found):
      fb_used+=1;ocr_done+=1;do_ocr=True
      try:found=recognize_frame(frame,cfg,True,orig)
@@ -307,7 +335,6 @@ def scan(task,cfg,notify=lambda _:None):
      if h['number'] not in evidence_cache:evidence_cache[h['number']]=save_evidence(frame,cfg,task['id'],ts,h['number'])
      h['evidence']=evidence_cache[h['number']];hits.append(h)
     notify(dict(type='progress',cursor=ts,duration=duration))
-   # Второй, более частый проход: в первом проходе трек не найден — берём кадры между уже проверенными.
    if mode=='short' and pass_no==0 and cfg.get('short_second_pass',True) and frames is None and len(times)>1 and not any(h['number'] for h in hits):
     plans.append([(a+b)/2 for a,b in zip(times,times[1:])])
     trace(cfg,'%s: трек не найден, второй проход по %d промежуточным кадрам'%(path.name,len(plans[1])))
