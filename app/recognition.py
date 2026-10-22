@@ -8,13 +8,12 @@ IMAGES={'.png','.jpg','.jpeg','.bmp','.tif','.tiff','.webp'}
 TAIL_SAFE=0.15
 TAIL_IGNORE=0.3
 OCR_DIGITS=str.maketrans('OoQDlI|SBZ','0000111582')
-FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 FUZZY_1041=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{10})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
-SPLIT_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
-SPLIT_MID=re.compile(r'(?<!\d)(\d{4,5})[^\d\n]{0,3}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
+SPLIT_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d)(?!\d)')
+SPLIT_MID=re.compile(r'(?<!\d)(\d{4,5})[^\d\n]{0,3}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d)(?!\d)')
 GLUE_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})(?!\d)')
 GLUE_MID=re.compile(r'(?<!\d)(\d{4,5})(?!\d)[^\d\n]{0,12}?[-–—]\s*(\d{4})(?!\d)')
-GLUE_TAIL=re.compile(r'[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
+GLUE_TAIL=re.compile(r'[-–—]\s*(\d{4})\s*[-–—]\s*(\d)(?!\d)')
 OCR_SAMPLES=[]
 ALL_TEXTS=[]
 
@@ -80,6 +79,10 @@ def extract(text,cfg,source='text',fuzzy=False):
    if name.startswith('Яндекс груз') and ((match.start()>0 and text[match.start()-1]=='-') or (match.end()<len(text) and text[match.end()]=='-')):continue
    if name=='Ozon пробелы мягкий':
     digits=re.sub(r'\D','',number);number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
+   if name.startswith('Этикетка 10-4-1') or name=='Ozon старый':
+    digits=re.sub(r'\D','',number)
+    if len(digits)!=15:continue
+    number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
    value=(number,market,name)
    if not any(existing[0]==number for existing in out):out.append(value)
  if fuzzy and source=='text':
@@ -90,17 +93,10 @@ def extract(text,cfg,source='text',fuzzy=False):
    if not digits.isdigit() or len(digits)!=15:continue
    number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
    if not any(existing[0]==number for existing in out):out.append((number,'Ozon','Ozon старый мягкий'))
-  for match in FUZZY_841.finditer(text):
-   raw=''.join(match.group(1,2,3))
-   if sum(c.isdigit() for c in raw)<10:continue
-   digits=raw.translate(OCR_DIGITS)
-   if not digits.isdigit() or len(digits)!=13:continue
-   number=digits[:8]+'-'+digits[8:12]+'-'+digits[12:]
-   if not any(existing[0]==number for existing in out):out.append((number,'Шаблон 8-4-1','Этикетка 8-4-1 мягкий'))
  return out
 
 def assemble_split(texts):
- # Чёрный текст читает первые 6 цифр, инвертированный — белые 4 цифры; склеиваем по одинаковому хвосту -DDDD-D.
+ # Чёрный текст читает первые 6 цифр, инвертированный — белые 4 цифры; склеиваем по одинаковому хвосту -DDDD-D (шаблон 10-4-1).
  head={};mid={}
  for text in texts:
   text=str(text)[:50000]
