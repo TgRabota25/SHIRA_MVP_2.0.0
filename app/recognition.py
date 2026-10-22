@@ -9,6 +9,15 @@ TAIL_IGNORE=0.3
 OCR_DIGITS=str.maketrans('OoQDlI|SBZ','0000111582')
 FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 
+def trace(cfg,message):
+ # Подробный журнал сканирования: что и когда проверялось. Сбой записи не должен ронять обработку.
+ try:
+  folder=Path(cfg['data_dir'])/'logs';folder.mkdir(parents=True,exist_ok=True)
+  path=folder/'scan-v2.log'
+  if path.exists() and path.stat().st_size>5*2**20:os.replace(path,folder/'scan-v2.log.1')
+  with open(path,'a',encoding='utf-8') as f:f.write(time.strftime('%Y-%m-%d %H:%M:%S ')+message+'\n')
+ except Exception:pass
+
 def native_limits():
  for key in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS']:os.environ[key]='1'
  import cv2
@@ -212,6 +221,15 @@ def short_result(hits,unknown=False,evidence=''):
  detail='Согласованный номер' if state=='done' else 'Несколько номеров: проверьте этикетку' if len(unique)>1 else 'Текст подтверждён только одним кадром'
  return dict(state=state,number=best,market=first['market'],evidence=first.get('evidence',''),detail=detail)
 
+def short_window(cfg,count,fps):
+ # Окно сканирования короткой сессии в секундах: [start, end]; end=0 означает «до конца видео».
+ last=max(0.0,(count-1)/fps-TAIL_SAFE)
+ try:ws=max(0.0,float(cfg.get('short_start',0) or 0));we=float(cfg.get('short_end',0) or 0)
+ except (ValueError,TypeError):ws=0.0;we=0.0
+ we=last if we<=0 else min(last,we)
+ if ws>=we:ws=0.0;we=last
+ return ws,we
+
 def scan(task,cfg,notify=lambda _:None):
  native_limits()
  import cv2,numpy as np
@@ -220,7 +238,7 @@ def scan(task,cfg,notify=lambda _:None):
  if not path.is_file():raise FatalInputError('Исходный файл отсутствует или перемещён')
  if identity(path)!=cfg['source_id']:raise FatalInputError('Исходный файл изменился: добавьте его заново')
  start=float(task['cursor']);mode=task['mode'];hits=[];unknown=False;unknown_evidence='';cap=None;gaps=[]
- rot=int(cfg.get('rotation',0) or 0)
+ rot=int(cfg.get('rotation',0) or 0);window=(0.0,0.0)
  try:
   if path.suffix.lower() in IMAGES:
    from PIL import Image,ImageOps
@@ -241,41 +259,53 @@ def scan(task,cfg,notify=lambda _:None):
     times=[];t=first
     while t<end-1e-6:times.append(max(0,t));t+=step
    else:
-    end=duration;times=np.linspace(0,max(0,(count-1)/fps-TAIL_SAFE),cfg['frames']).tolist()
+    end=duration;window=short_window(cfg,count,fps);times=np.linspace(window[0],window[1],cfg['frames']).tolist()
    frames=None
   notify(dict(type='metadata',duration=duration,cursor=start))
   if cfg.get('probe_only'):return dict(state='pending',duration=duration,cursor=start,hits=[])
-  evidence_cache={};warnings=[];read=0;fb_used=0
+  evidence_cache={};warnings=[];read=0;fb_used=0;qr_frames=0;ocr_done=0
   ocr_indices={int(round(i)) for i in np.linspace(0,max(0,len(times)-1),min(len(times),cfg['ocr_frames']))}
-  for index,ts in enumerate(times):
-   if frames is not None:frame=frames[0]
-   else:
-    ok,frame=read_frame(cap,ts)
-    if not ok or frame is None:gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),'Не удалось декодировать кадр'));continue
-   read+=1;frame=scaled(rotate_frame(frame,rot),cfg['width'])
-   do_ocr=(index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0)
-   try:found=recognize_frame(frame,cfg,do_ocr)
-   except (TimeoutError,RuntimeError) as exc:
-    found=recognize_frame(frame,cfg,False);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
-   # Короткая сессия: QR найден, трека в нём нет, а OCR на этом кадре не запускался — дочитываем текст этикетки.
-   if mode=='short' and not do_ocr and cfg.get('qr_text_fallback',True) and fb_used<int(cfg.get('qr_text_fallback_max',12)) and found and not any(h['number'] for h in found):
-    fb_used+=1
-    try:found=recognize_frame(frame,cfg,True)
-    except (TimeoutError,RuntimeError) as exc:warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
-   for h in found:
-    if not h['number']:
-     unknown=True
-     if not unknown_evidence:unknown_evidence=save_evidence(frame,cfg,task['id'],ts,'qr-no-track')
-     continue
-    h.update(ts=round(ts,3),state='review' if 'OCR' in h['method'] or h.get('weak') else 'done')
-    if h['number'] not in evidence_cache:evidence_cache[h['number']]=save_evidence(frame,cfg,task['id'],ts,h['number'])
-    h['evidence']=evidence_cache[h['number']];hits.append(h)
-   notify(dict(type='progress',cursor=ts,duration=duration))
+  if mode=='short':trace(cfg,'%s: старт, окно %.1f–%.1f с из %.1f с, кадров %d, OCR-кадров %d'%(path.name,window[0],window[1],duration,len(times),len(ocr_indices)))
+  plans=[times];pass_no=0
+  while pass_no<len(plans):
+   for index,ts in enumerate(plans[pass_no]):
+    if frames is not None:frame=frames[0]
+    else:
+     ok,frame=read_frame(cap,ts)
+     if not ok or frame is None:gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),'Не удалось декодировать кадр'));continue
+    read+=1;frame=scaled(rotate_frame(frame,rot),cfg['width'])
+    do_ocr=((pass_no==0 and index in ocr_indices) if mode=='short' else (int(round(ts/cfg['long_step']))%cfg['long_ocr_every']==0))
+    try:found=recognize_frame(frame,cfg,do_ocr)
+    except (TimeoutError,RuntimeError) as exc:
+     found=recognize_frame(frame,cfg,False);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
+    if do_ocr:ocr_done+=1
+    # Короткая сессия: QR найден, трека в нём нет, а OCR на этом кадре не запускался — дочитываем текст этикетки.
+    if mode=='short' and not do_ocr and cfg.get('qr_text_fallback',True) and fb_used<int(cfg.get('qr_text_fallback_max',12)) and found and not any(h['number'] for h in found):
+     fb_used+=1;ocr_done+=1
+     try:found=recognize_frame(frame,cfg,True)
+     except (TimeoutError,RuntimeError) as exc:warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
+    if found:qr_frames+=1
+    if mode=='short':trace(cfg,'%s: проход %d, t=%.2f с, OCR=%s, найдено=%s'%(path.name,pass_no+1,ts,'да' if do_ocr else 'нет',[(h['number'] or 'QR без трека',h['method']) for h in found]))
+    for h in found:
+     if not h['number']:
+      unknown=True
+      if not unknown_evidence:unknown_evidence=save_evidence(frame,cfg,task['id'],ts,'qr-no-track')
+      continue
+     h.update(ts=round(ts,3),state='review' if 'OCR' in h['method'] or h.get('weak') else 'done')
+     if h['number'] not in evidence_cache:evidence_cache[h['number']]=save_evidence(frame,cfg,task['id'],ts,h['number'])
+     h['evidence']=evidence_cache[h['number']];hits.append(h)
+    notify(dict(type='progress',cursor=ts,duration=duration))
+   # Второй, более частый проход: в первом проходе трек не найден — берём кадры между уже проверенными.
+   if mode=='short' and pass_no==0 and cfg.get('short_second_pass',True) and frames is None and len(times)>1 and not any(h['number'] for h in hits):
+    plans.append([(a+b)/2 for a,b in zip(times,times[1:])])
+    trace(cfg,'%s: трек не найден, второй проход по %d промежуточным кадрам'%(path.name,len(plans[1])))
+   pass_no+=1
   if not read and times:raise ValueError('Ни один кадр интервала не прочитан')
   if mode=='short':
    result=short_result(hits,unknown,unknown_evidence)
    real_gaps=[g for g in gaps if g[0]<duration-TAIL_IGNORE or g[2]!='Не удалось декодировать кадр']
    if real_gaps:result.update(state='review' if (hits or unknown) else 'error',detail=result['detail']+'; есть пропуски декодирования / OCR')
+   trace(cfg,'%s: итог %s, номер=%s, прочитано кадров %d, кадров с QR/находками %d, OCR-вызовов %d, пропусков %d, причина: %s'%(path.name,result['state'],result.get('number') or '-',read,qr_frames,ocr_done,len(gaps),result['detail']))
   else:
    result=dict(state='done' if end>=duration-1e-6 else 'pending',detail='Индексация: '+str(len(hits))+' наблюдений за интервал')
   result.update(hits=hits,cursor=end,duration=duration,gaps=gaps)

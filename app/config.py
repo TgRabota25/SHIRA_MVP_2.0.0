@@ -41,9 +41,16 @@ def _zero_or_range(value,low,high,default=0):
  if number==0:return 0
  return min(high,max(low,number))
 
+def _seconds(value,default=0.0):
+ try:number=float(value)
+ except (ValueError,TypeError):return default
+ if number!=number or number<0:return default
+ return min(86400.0,number)
+
 def settings():
  value=dict(profile='balanced',mode='short',long_step=1.0,long_ocr_every=3,language='rus+eng',recursive=True,patterns=DEFAULT_PATTERNS,
-  short_frames=0,short_ocr_frames=0,qr_text_fallback=True,qr_text_fallback_max=12,qr_strong_ocr=True,fuzzy_841=True)
+  short_frames=0,short_ocr_frames=0,short_start=0.0,short_end=0.0,short_second_pass=True,
+  qr_text_fallback=True,qr_text_fallback_max=12,qr_strong_ocr=True,fuzzy_841=True)
  try:
   loaded=json.loads((data_dir()/'settings-v2.json').read_text('utf-8'))
   if isinstance(loaded,dict):value.update(loaded)
@@ -57,9 +64,11 @@ def settings():
  if value.get('language') not in ('rus','eng','rus+eng'):value['language']='rus+eng'
  value['short_frames']=_zero_or_range(value.get('short_frames'),4,120)
  value['short_ocr_frames']=_zero_or_range(value.get('short_ocr_frames'),1,120)
+ value['short_start']=_seconds(value.get('short_start'),0.0)
+ value['short_end']=_seconds(value.get('short_end'),0.0)
  try:value['qr_text_fallback_max']=min(60,max(0,int(value.get('qr_text_fallback_max',12))))
  except (ValueError,TypeError):value['qr_text_fallback_max']=12
- for key in ('qr_text_fallback','qr_strong_ocr','fuzzy_841'):value[key]=bool(value.get(key,True))
+ for key in ('qr_text_fallback','qr_strong_ocr','fuzzy_841','short_second_pass'):value[key]=bool(value.get(key,True))
  return value
 
 def worker_config(value):
