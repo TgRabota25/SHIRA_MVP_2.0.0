@@ -10,6 +10,8 @@ TAIL_IGNORE=0.3
 OCR_DIGITS=str.maketrans('OoQDlI|SBZ','0000111582')
 FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 FUZZY_1041=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{10})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
+SPLIT_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
+SPLIT_MID=re.compile(r'(?<!\d)(\d{4,5})[^\d\n]{0,3}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
 OCR_SAMPLES=[]
 
 def trace(cfg,message):
@@ -91,6 +93,21 @@ def extract(text,cfg,source='text',fuzzy=False):
    if not digits.isdigit() or len(digits)!=13:continue
    number=digits[:8]+'-'+digits[8:12]+'-'+digits[12:]
    if not any(existing[0]==number for existing in out):out.append((number,'Шаблон 8-4-1','Этикетка 8-4-1 мягкий'))
+ return out
+
+def assemble_split(texts):
+ # Чёрный текст читает первые 6 цифр, инвертированный — белые 4 цифры; склеиваем по одинаковому хвосту -DDDD-D.
+ head={};mid={}
+ for text in texts:
+  text=str(text)[:50000]
+  for m in SPLIT_HEAD.finditer(text):head.setdefault((m.group(2),m.group(3)),set()).add(m.group(1))
+  for m in SPLIT_MID.finditer(text):mid.setdefault((m.group(2),m.group(3)),set()).add(m.group(1)[-4:])
+ out=[]
+ for key in head:
+  for x in sorted(head[key]):
+   for y in sorted(mid.get(key,())):
+    number=x+y+'-'+key[0]+'-'+key[1]
+    if number not in out:out.append(number)
  return out
 
 def tesseract_binary(cfg):
@@ -188,7 +205,6 @@ def roi_images(frame,regions,full=None,angles=None):
  return out[:3] if len(out)>3 else out
 
 def fix_inverted(gray):
- # Белые цифры на чёрном прямоугольнике инвертируются в чёрные на белом: только этот блок, остальное не трогаем.
  import cv2,numpy as np
  blur=cv2.GaussianBlur(gray,(5,5),0)
  _,dark=cv2.threshold(blur,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
@@ -205,7 +221,7 @@ def fix_inverted(gray):
 def recognize_frame(frame,cfg,do_ocr=True,orig=None):
  import cv2
  fuzzy=bool(cfg.get('fuzzy_841',True))
- codes,regions,angles=qr_regions(frame);findings=[];raw_codes=[]
+ codes,regions,angles=qr_regions(frame);findings=[];raw_codes=[];all_texts=[]
  src=frame;rg=regions
  if orig is not None and regions and orig.shape[:2]!=frame.shape[:2]:
   sx=orig.shape[1]/frame.shape[1];sy=orig.shape[0]/frame.shape[0]
@@ -226,7 +242,7 @@ def recognize_frame(frame,cfg,do_ocr=True,orig=None):
      if fixed is not None:variants.append(fixed)
     for variant in variants:
      variant=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(variant)
-     text=ocr(variant,cfg,11)
+     text=ocr(variant,cfg,11);all_texts.append(text)
      for number,market,template in extract(text,cfg,fuzzy=fuzzy):
       key=(number,index)
       if key in seen:continue
@@ -235,7 +251,11 @@ def recognize_frame(frame,cfg,do_ocr=True,orig=None):
      if region_found:break
     if region_found:break
    if region_found:break
-  if regions and not any('OCR' in f['method'] for f in findings) and cfg.get('qr_strong_ocr',True):
+  if not any(f['number'] and len(re.sub(r'\D','',f['number']))==15 for f in findings):
+   for number in assemble_split(all_texts):
+    if any(f['number']==number for f in findings):continue
+    findings.append(dict(number=number,market='Ozon',method='QR-якорный OCR (склейка частей)' if regions else 'OCR (склейка частей)',raw=' || '.join(all_texts)[:2000],template='Ozon старый (склейка)',weak=False))
+  if regions and not any(f['number'] and ('OCR' in f['method']) for f in findings) and cfg.get('qr_strong_ocr',True):
    try:
     crop=roi_images(src,rg,frame,angles)[0]
     big=cv2.resize(crop,None,fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
