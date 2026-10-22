@@ -9,6 +9,7 @@ TAIL_SAFE=0.15
 TAIL_IGNORE=0.3
 OCR_DIGITS=str.maketrans('OoQDlI|SBZ','0000111582')
 FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
+FUZZY_1041=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{10})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 OCR_SAMPLES=[]
 
 def trace(cfg,message):
@@ -76,6 +77,13 @@ def extract(text,cfg,source='text',fuzzy=False):
    value=(number,market,name)
    if not any(existing[0]==number for existing in out):out.append(value)
  if fuzzy and source=='text':
+  for match in FUZZY_1041.finditer(text):
+   raw=''.join(match.group(1,2,3))
+   if sum(c.isdigit() for c in raw)<12:continue
+   digits=raw.translate(OCR_DIGITS)
+   if not digits.isdigit() or len(digits)!=15:continue
+   number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
+   if not any(existing[0]==number for existing in out):out.append((number,'Ozon','Ozon старый мягкий'))
   for match in FUZZY_841.finditer(text):
    raw=''.join(match.group(1,2,3))
    if sum(c.isdigit() for c in raw)<10:continue
@@ -128,7 +136,6 @@ def scaled(frame,width):
  return frame
 
 def qr_regions(frame):
- # Возвращает декодированные коды, рамки и углы наклона QR (градусы, по верхнему краю символа).
  import cv2,zxingcpp
  decoded=zxingcpp.read_barcodes(frame,try_rotate=True,try_downscale=True)
  regions=[];angles=[]
@@ -148,7 +155,6 @@ def qr_regions(frame):
  return decoded,regions,angles
 
 def upright_crop(frame,box,angle):
- # Поворачивает область вокруг QR так, чтобы QR стоял прямо: текст этикетки рядом тоже становится прямым.
  import cv2
  x1,y1,x2,y2=box;cx=(x1+x2)/2;cy=(y1+y2)/2;h,w=frame.shape[:2]
  size=max(x2-x1,y2-y1,20);r=int(size*9)
@@ -181,6 +187,21 @@ def roi_images(frame,regions,full=None,angles=None):
  out.append(full if full is not None else frame)
  return out[:3] if len(out)>3 else out
 
+def fix_inverted(gray):
+ # Белые цифры на чёрном прямоугольнике инвертируются в чёрные на белом: только этот блок, остальное не трогаем.
+ import cv2,numpy as np
+ blur=cv2.GaussianBlur(gray,(5,5),0)
+ _,dark=cv2.threshold(blur,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+ dark=cv2.morphologyEx(dark,cv2.MORPH_CLOSE,np.ones((7,15),np.uint8))
+ found,_=cv2.findContours(dark,cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+ out=gray.copy();h,w=gray.shape[:2];total=h*w;changed=0
+ for contour in found:
+  x,y,bw,bh=cv2.boundingRect(contour);area=bw*bh
+  if area<total*0.002 or area>total*0.15 or bw<bh*1.5 or bw>bh*12:continue
+  if cv2.contourArea(contour)<0.6*area:continue
+  out[y:y+bh,x:x+bw]=255-out[y:y+bh,x:x+bw];changed+=1
+ return out if changed else None
+
 def recognize_frame(frame,cfg,do_ocr=True,orig=None):
  import cv2
  fuzzy=bool(cfg.get('fuzzy_841',True))
@@ -199,13 +220,19 @@ def recognize_frame(frame,cfg,do_ocr=True,orig=None):
    for rotation in (0,90,180,270):
     rotated=image if rotation==0 else cv2.rotate(image,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
     gray=cv2.cvtColor(rotated,cv2.COLOR_BGR2GRAY) if len(rotated.shape)==3 else rotated
-    gray=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(gray)
-    text=ocr(gray,cfg,11)
-    for number,market,template in extract(text,cfg,fuzzy=fuzzy):
-     key=(number,index)
-     if key in seen:continue
-     seen.add(key);region_found=True
-     findings.append(dict(number=number,market=market,method='QR-якорный OCR' if regions and index<len(regions) else 'OCR',raw=text[:2000],template=template,weak=('мягкий' in template)))
+    variants=[gray]
+    if regions and index<len(regions):
+     fixed=fix_inverted(gray)
+     if fixed is not None:variants.append(fixed)
+    for variant in variants:
+     variant=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(variant)
+     text=ocr(variant,cfg,11)
+     for number,market,template in extract(text,cfg,fuzzy=fuzzy):
+      key=(number,index)
+      if key in seen:continue
+      seen.add(key);region_found=True
+      findings.append(dict(number=number,market=market,method='QR-якорный OCR' if regions and index<len(regions) else 'OCR',raw=text[:2000],template=template,weak=('мягкий' in template)))
+     if region_found:break
     if region_found:break
    if region_found:break
   if regions and not any('OCR' in f['method'] for f in findings) and cfg.get('qr_strong_ocr',True):
@@ -213,14 +240,17 @@ def recognize_frame(frame,cfg,do_ocr=True,orig=None):
     crop=roi_images(src,rg,frame,angles)[0]
     big=cv2.resize(crop,None,fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
     gray=cv2.cvtColor(big,cv2.COLOR_BGR2GRAY) if len(big.shape)==3 else big
-    gray=cv2.GaussianBlur(gray,(3,3),0);_,bw=cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    for rotation in (0,90,180,270):
-     image=bw if rotation==0 else cv2.rotate(bw,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
-     text=ocr(image,cfg,6);added=False
-     for number,market,template in extract(text,cfg,fuzzy=fuzzy):
-      if any(f['number']==number for f in findings):continue
-      added=True;findings.append(dict(number=number,market=market,method='QR-якорный OCR (усиленный)',raw=text[:2000],template=template,weak=True))
-     if added:break
+    for base in (gray,fix_inverted(gray)):
+     if base is None:continue
+     blurred=cv2.GaussianBlur(base,(3,3),0);_,bw=cv2.threshold(blurred,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+     for rotation in (0,90,180,270):
+      image=bw if rotation==0 else cv2.rotate(bw,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
+      text=ocr(image,cfg,6);added=False
+      for number,market,template in extract(text,cfg,fuzzy=fuzzy):
+       if any(f['number']==number for f in findings):continue
+       added=True;findings.append(dict(number=number,market=market,method='QR-якорный OCR (усиленный)',raw=text[:2000],template=template,weak=True))
+      if added:break
+     if any('усиленный' in f['method'] for f in findings):break
    except (TimeoutError,RuntimeError):pass
  if not findings and raw_codes:findings.append(dict(number='',market='',method='QR без трека',raw='\n'.join(raw_codes)[:2000],template=''))
  return findings
@@ -235,7 +265,6 @@ def save_evidence(frame,cfg,key,ts,number):
  temp=path.with_suffix('.tmp');temp.write_bytes(data.tobytes());os.replace(temp,path);return str(path)
 
 def near_groups(valid):
- # Группирует чтения одинаковой длины, отличающиеся не более чем в 2 символах (типичные ошибки OCR).
  groups=[]
  for h in valid:
   for g in groups:
