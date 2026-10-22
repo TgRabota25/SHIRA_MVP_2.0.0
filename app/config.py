@@ -10,22 +10,13 @@ PROFILES={
 DEFAULT_PATTERNS=[
  {'name':'Ozon ii','market':'Ozon','regex':r'(?<![A-Za-z0-9])[iI]{2}\s*\d{11}(?!\d)'},
  {'name':'Ozon старый','market':'Ozon','regex':r'(?<!\d)\d{6}\s*\d{4}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
- short-window-settings
  {'name':'Этикетка 8/10-4-1','market':'Ozon','regex':r'(?<!\d)\d{8}(?:\d{2})?\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
  {'name':'Яндекс груз','market':'Yandex Market','regex':r'(?<!\d)\d{11}\s*[-–—]\s*\d{1,3}(?!\d)'},
  {'name':'Ozon ii мягкий','market':'Ozon','regex':r'(?<![A-Za-z0-9])[iI]{2}\s*\d{10,12}(?!\d)'},
  {'name':'Этикетка 8/10-4-1 мягкий','market':'Ozon','regex':r'(?<!\d)(?:\d{10}|\d{8}|\d{6}\s\d{4}|\d{5}\s\d{5}|\d{4}\s\d{4})\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
-
- {'name':'Этикетка 10-4-1','market':'Ozon','regex':r'(?<!\d)\d{10}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
- {'name':'Этикетка 8-4-1','market':'Ozon','regex':r'(?<!\d)\d{8}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
- {'name':'Яндекс груз','market':'Yandex Market','regex':r'(?<!\d)\d{11}\s*[-–—]\s*\d{1,3}(?!\d)'},
- {'name':'Ozon ii мягкий','market':'Ozon','regex':r'(?<![A-Za-z0-9])[iI]{2}\s*\d{10,12}(?!\d)'},
- {'name':'Этикетка 10-4-1 мягкий','market':'Ozon','regex':r'(?<!\d)(?:\d{10}|\d{6}\s\d{4}|\d{5}\s\d{5})\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
- {'name':'Этикетка 8-4-1 мягкий','market':'Ozon','regex':r'(?<!\d)\d{4}\s\d{4}\s*[-–—]\s*\d{4}\s*[-–—]\s*\d(?!\d)'},
- main
  {'name':'Яндекс груз мягкий','market':'Yandex Market','regex':r'(?<!\d)\d{10,12}\s*[-–—]\s*\d{1,3}(?!\d)'},
  {'name':'Яндекс заказ QR мягкий','market':'Yandex Market','source':'qr','regex':r'^\d{11}$'}]
-REPLACED_PATTERNS={'Этикетка 8-4-1','Этикетка 10-4-1','Ozon старый','Ozon пробелы мягкий','Этикетка 10-4-1 мягкий','Этикетка 8/10-4-1','Этикетка 8/10-4-1 мягкий'}
+REPLACED_PATTERNS={'Этикетка 8-4-1','Этикетка 10-4-1','Ozon пробелы мягкий','Этикетка 10-4-1 мягкий','Этикетка 8-4-1 мягкий'}
 def data_dir():
  p=Path(os.environ.get('SHIRA_DATA_DIR') or (Path(os.environ.get('LOCALAPPDATA',str(Path.home()/'.local/share')))/'SHIRA_MVP'))
  p.mkdir(parents=True,exist_ok=True);return p
