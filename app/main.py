@@ -42,17 +42,11 @@ class Application:
  def build(self):
   frame=ttk.Frame(self.root,padding=10);frame.pack(fill='both',expand=True)
   header=ttk.Frame(frame);header.pack(fill='x')
- stage1-reliability
   from PIL import ImageTk
   try:self.brand=ImageTk.PhotoImage(brand_icon(ROOT/'app/icon.png',42))
   except Exception:self.brand=None
   if self.brand:ttk.Label(header,image=self.brand).pack(side='left')
   ttk.Label(header,text='SHIRA • локальный видеоархив',font=('Segoe UI',16,'bold')).pack(side='left',padx=8)
-
-  from PIL import Image,ImageTk
-  self.brand=ImageTk.PhotoImage(Image.open(ROOT/'app/icon.png').convert('RGBA').resize((48,48),Image.LANCZOS))
-  ttk.Label(header,image=self.brand).pack(side='left');ttk.Label(header,text='SHIRA • локальный видеоархив',font=('Segoe UI',16,'bold')).pack(side='left',padx=8)
- main
   ttk.Button(header,text='Инструкция',command=lambda:self.safe_open(ROOT/'README_RU.md')).pack(side='right')
   bar=ttk.Frame(frame);bar.pack(fill='x',pady=8)
   ttk.Button(bar,text='Добавить файлы',command=self.add_files).pack(side='left');ttk.Button(bar,text='Добавить папку',command=self.add_folder).pack(side='left',padx=4)
@@ -229,24 +223,35 @@ class Application:
   if (changed and time.monotonic()-self.last_refresh>1) or time.monotonic()-self.last_refresh>5:self.refresh()
   self.root.after(150,self.poll)
  def preferences(self):
-  win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('860x650');self.bind_copy(win)
+  win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('900x900');self.bind_copy(win)
   frame=ttk.Frame(win,padding=15);frame.pack(fill='both',expand=True)
   ttk.Label(frame,text='Изменения применяются к новым заданиям. Уже добавленные используют сохранённые настройки.').pack(anchor='w')
-  ttk.Label(frame,text='Шаг поиска QR в длинном видео, секунд (0.1–60):').pack(anchor='w',pady=(10,0));step=tk.StringVar(value=str(self.cfg['long_step']));ttk.Entry(frame,textvariable=step).pack(fill='x')
-  ttk.Label(frame,text='OCR на каждом N-м выбранном кадре (1 — весь шаг, медленнее):').pack(anchor='w');every=tk.StringVar(value=str(self.cfg['long_ocr_every']));ttk.Entry(frame,textvariable=every).pack(fill='x')
-  ttk.Label(frame,text='Языки OCR:').pack(anchor='w');lang=tk.StringVar(value=self.cfg['language']);ttk.Combobox(frame,textvariable=lang,values=['rus+eng','eng','rus'],state='readonly').pack(fill='x')
+  box=ttk.LabelFrame(frame,text='Длительная сессия',padding=8);box.pack(fill='x',pady=(8,0))
+  ttk.Label(box,text='Шаг поиска QR в длинном видео, секунд (0.1–60):').pack(anchor='w');step=tk.StringVar(value=str(self.cfg['long_step']));ttk.Entry(box,textvariable=step).pack(fill='x')
+  ttk.Label(box,text='OCR на каждом N-м выбранном кадре (1 — весь шаг, медленнее):').pack(anchor='w');every=tk.StringVar(value=str(self.cfg['long_ocr_every']));ttk.Entry(box,textvariable=every).pack(fill='x')
+  short=ttk.LabelFrame(frame,text='Короткая сессия',padding=8);short.pack(fill='x',pady=(8,0))
+  ttk.Label(short,text='Кадров на видео для QR (0 — как в профиле ПК, иначе 4–120):').pack(anchor='w');sframes=tk.StringVar(value=str(self.cfg['short_frames']));ttk.Entry(short,textvariable=sframes).pack(fill='x')
+  ttk.Label(short,text='Кадров с OCR текста этикетки (0 — как в профиле ПК, иначе 1–120):').pack(anchor='w');socr=tk.StringVar(value=str(self.cfg['short_ocr_frames']));ttk.Entry(short,textvariable=socr).pack(fill='x')
+  sqr=tk.BooleanVar(value=self.cfg['short_qr_ocr']);ttk.Checkbutton(short,text='Если QR найден, а трека 8-4-1 в нём нет — дочитывать текст этикетки (OCR)',variable=sqr).pack(anchor='w',pady=(4,0))
+  ttk.Label(short,text='Максимум таких дополнительных OCR-кадров на видео (0–60):').pack(anchor='w');sqrmax=tk.StringVar(value=str(self.cfg['short_qr_ocr_max']));ttk.Entry(short,textvariable=sqrmax).pack(fill='x')
+  senh=tk.BooleanVar(value=self.cfg['short_enhanced']);ttk.Checkbutton(short,text='Усиленный OCR вокруг QR, если трек не найден (медленнее, лучше читает мелкий текст)',variable=senh).pack(anchor='w',pady=(4,0))
+  ttk.Label(frame,text='Языки OCR:').pack(anchor='w',pady=(8,0));lang=tk.StringVar(value=self.cfg['language']);ttk.Combobox(frame,textvariable=lang,values=['rus+eng','eng','rus'],state='readonly').pack(fill='x')
   recursive=tk.BooleanVar(value=self.cfg.get('recursive',True));ttk.Checkbutton(frame,text='Добавлять вложенные папки',variable=recursive).pack(anchor='w')
   ttk.Label(frame,text='Шаблоны JSON (regex, name, market).').pack(anchor='w',pady=(10,0))
-  text=tk.Text(frame,height=13,wrap='word');text.pack(fill='both',expand=True);text.insert('1.0',json.dumps(self.cfg['patterns'],ensure_ascii=False,indent=2))
+  text=tk.Text(frame,height=8,wrap='word');text.pack(fill='both',expand=True);text.insert('1.0',json.dumps(self.cfg['patterns'],ensure_ascii=False,indent=2))
   def save():
    try:
     s=float(step.get());n=int(every.get());p=json.loads(text.get('1.0','end'))
+    sf=int(sframes.get() or 0);so=int(socr.get() or 0);sm=int(sqrmax.get() or 0)
     if not .1<=s<=60 or not 1<=n<=100:raise ValueError('Проверьте диапазоны шага и N')
+    if sf!=0 and not 4<=sf<=120:raise ValueError('Кадров для QR: 0 или 4–120')
+    if so!=0 and not 1<=so<=120:raise ValueError('Кадров с OCR: 0 или 1–120')
+    if not 0<=sm<=60:raise ValueError('Допкадров OCR: 0–60')
     if not isinstance(p,list) or not 1<=len(p)<=30:raise ValueError('Нужен список из 1–30 шаблонов')
     for item in p:
      if not isinstance(item,dict) or not isinstance(item.get('regex'),str) or len(item['regex'])>300:raise ValueError('Некорректный шаблон')
      re.compile(item['regex'])
-    self.cfg.update(long_step=s,long_ocr_every=n,patterns=p,language=lang.get(),recursive=recursive.get());self.active_cfg();win.destroy()
+    self.cfg.update(long_step=s,long_ocr_every=n,patterns=p,language=lang.get(),recursive=recursive.get(),short_frames=sf,short_ocr_frames=so,short_qr_ocr=sqr.get(),short_qr_ocr_max=sm,short_enhanced=senh.get());self.active_cfg();win.destroy()
    except Exception as exc:messagebox.showerror('Настройки',str(exc),parent=win)
   ttk.Button(frame,text='Сохранить',command=save).pack(pady=8)
   def legacy():
@@ -290,7 +295,6 @@ class Application:
    except Exception as exc:messagebox.showerror('Файл',str(exc),parent=win)
   ttk.Button(buttons,text='Копировать файл для письма',command=cf).pack(side='left');ttk.Button(buttons,text='Открыть видео',command=lambda:self.safe_open(row['path'])).pack(side='left',padx=4)
   info=ttk.Entry(frame,state='normal');info.insert(0,LABELS[row['state']]+' · '+row['detail']);info.configure(state='readonly');info.pack(fill='x')
- stage1-reliability
   shown={'path':row['evidence'] or '','temp':None}
   image_label=ttk.Label(frame,text='Кадр не сохранён');image_label.pack(fill='both',expand=True,pady=8)
   def show():
@@ -301,13 +305,6 @@ class Application:
   for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(tools,text=label,command=lambda d=delta:turn(d)).pack(side='left',padx=2)
   ttk.Button(tools,text='Кадр крупно',command=lambda:FullImage(self,win,shown['path'],key)).pack(side='left',padx=8)
   hits,total=self.store.hits(key);text=tk.Text(frame,height=5,wrap='word');text.pack(fill='x',pady=(8,0))
-
-  image_label=ttk.Label(frame,text='Кадр не сохранён');image_label.pack(fill='both',expand=True,pady=8);self.load_image(image_label,row['evidence'],(950,400),self.get_rotation(row['path']))
-  def turn(delta):
-   self.set_rotation(row['path'],self.get_rotation(row['path'])+delta);self.load_image(image_label,row['evidence'],(950,400),self.get_rotation(row['path']))
-  ttk.Button(buttons,text='Повернуть ↺',command=lambda:turn(-90)).pack(side='left',padx=(12,2));ttk.Button(buttons,text='Повернуть ↻',command=lambda:turn(90)).pack(side='left')
-  hits,total=self.store.hits(key);text=tk.Text(frame,height=5,wrap='word');text.pack(fill='x')
- main
   for hit in hits:text.insert('end',f"{hit['number']} · {hit['market']} · {stamp(hit['ts'])} · {hit['method']}\n")
   text.configure(state='disabled')
   if shown['path'] and Path(shown['path']).is_file():show()
@@ -324,21 +321,11 @@ class Application:
    try:self.store.confirm(key,number.get(),market.get());self.refresh();win.destroy()
    except Exception as exc:messagebox.showerror('Проверка',str(exc),parent=win)
   foot=ttk.Frame(frame);foot.pack(fill='x');ttk.Button(foot,text='Подтвердить номер',command=confirm).pack(side='left');ttk.Button(foot,text='История',command=lambda:self.history(key)).pack(side='left',padx=4);ttk.Button(foot,text='Индекс / все кадры',command=lambda:self.index(key)).pack(side='left');ttk.Button(foot,text='Закрыть',command=win.destroy).pack(side='right')
- stage1-reliability
  def load_image(self,label,path,size,angle=0):
   if not path or not Path(path).is_file():return
   try:
    from PIL import ImageTk
    im=render_image(path,angle,size)
-
- def load_image(self,label,path,size,rotation=0):
-  if not path or not Path(path).is_file():return
-  try:
-   from PIL import Image,ImageTk
-   with Image.open(path) as source:im=source.copy()
-   if rotation%360:im=im.rotate(-(rotation%360),expand=True)
-   im.thumbnail(size,Image.LANCZOS)
- main
    label._photo=ImageTk.PhotoImage(im);label.configure(image=label._photo,text='')
   except Exception as exc:label.configure(text='Ошибка кадра: '+str(exc))
  def history(self,key):
@@ -383,7 +370,7 @@ class FullImage:
 class IndexWindow:
  SIZE=(1250,480)
  def __init__(self,app,key):
-  self.app=app;self.key=key;self.page=0;self.sort='ts';self.desc=False;self.rows={};self.temp=None;self.current=None;self.fetching=False
+  self.app=app;self.key=key;self.page=0;self.sort='ts';self.desc=False;self.rows={};self.temp=None;self.current=None;self.fetching=False;self.total=0
   win=self.win=tk.Toplevel(app.root);icon(win);win.title('Индекс этикеток — поиск и таймкоды');win.geometry('1300x950');app.bind_copy(win);win.protocol('WM_DELETE_WINDOW',self.close)
   frame=ttk.Frame(win,padding=10);frame.pack(fill='both',expand=True);bar=ttk.Frame(frame);bar.pack(fill='x')
   self.query=tk.StringVar(value=app.search.get());ttk.Label(bar,text='Трек:').pack(side='left');entry=ttk.Entry(bar,textvariable=self.query,width=36);entry.pack(side='left',padx=4);entry.bind('<Return>',lambda e:self.search());ttk.Button(bar,text='Найти',command=self.search).pack(side='left');ttk.Button(bar,text='←',command=lambda:self.change(-1)).pack(side='left',padx=4);ttk.Button(bar,text='→',command=lambda:self.change(1)).pack(side='left');self.info=tk.StringVar();ttk.Label(bar,textvariable=self.info).pack(side='left',padx=8)
@@ -391,23 +378,15 @@ class IndexWindow:
   for col,label,width in zip(cols,['Номер','Время','Источник','Проверка','Видео','Путь'],[190,110,150,120,220,350]):self.tree.heading(col,text=label,command=lambda c=col:self.sort_by(c));self.tree.column(col,width=width)
   self.tree.pack(fill='x',pady=7);self.tree.bind('<<TreeviewSelect>>',lambda e:self.select());self.tree.bind('<Control-c>',self.copy);self.tree.bind('<Control-a>',lambda e:self.tree.selection_set(self.tree.get_children()));self.tree.bind('<Double-1>',lambda e:self.preview())
   actions=ttk.Frame(frame);actions.pack(fill='x')
- stage1-reliability
   for label,fn in [('Кадр по таймкоду',self.preview),('Открыть видео',self.open_video),('К файлу',self.reveal),('Копировать строки',self.copy),('Копировать путь',self.copy_path),('Подтвердить трек',self.confirm),('Сводка',self.summary)]:ttk.Button(actions,text=label,command=fn).pack(side='left',padx=2)
   view=ttk.Frame(frame);view.pack(fill='x',pady=(6,0))
   for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(view,text=label,command=lambda d=delta:self.turn(d)).pack(side='left',padx=2)
   ttk.Button(view,text='Кадр крупно',command=self.full).pack(side='left',padx=8)
-
-  for label,fn in [('Кадр по таймкоду',self.preview),('Открыть видео',self.open_video),('К файлу',self.reveal),('Копировать строки',self.copy),('Копировать путь',self.copy_path),('Подтвердить трек',self.confirm),('Сводка',self.summary),('Повернуть ↺',lambda:self.rotate(-90)),('Повернуть ↻',lambda:self.rotate(90))]:ttk.Button(actions,text=label,command=fn).pack(side='left',padx=2)
- main
   self.path=tk.StringVar();ttk.Entry(frame,textvariable=self.path,state='readonly').pack(fill='x',pady=5)
   self.image=ttk.Label(frame,text='Выберите этикетку. Двойной щелчок — кадр на её таймкоде.');self.image.pack(fill='both',expand=True)
   ttk.Label(frame,text='Время — позиция выбранного кадра, не точные границы появления этикетки. Поиск показывает наблюдения, а не гарантированный список всех посылок.').pack(fill='x')
   if key:ttk.Button(frame,text='Пропуски и история этого видео',command=lambda:app.history(key)).pack(anchor='w')
   self.refresh()
- def rotate(self,delta):
-  r=self.selected()
-  if not r:return
-  self.app.set_rotation(r['path'],self.app.get_rotation(r['path'])+delta);self.select()
  def sort_by(self,col):
   if self.sort==col:self.desc=not self.desc
   else:self.sort=col;self.desc=False
@@ -431,7 +410,6 @@ class IndexWindow:
   self.current=(path,task_id);self.app.load_image(self.image,path,self.SIZE,self.app.rot.get(task_id))
  def select(self):
   r=self.selected()
- stage1-reliability
   if r:
    self.path.set(r['path'])
    if r['evidence'] and Path(r['evidence']).is_file():self.show(r['evidence'],r['task_id'])
@@ -443,9 +421,6 @@ class IndexWindow:
  def full(self):
   if self.current:FullImage(self.app,self.win,self.current[0],self.current[1])
   else:messagebox.showinfo('SHIRA','Сначала выберите этикетку',parent=self.win)
-
-  if r:self.path.set(r['path']);self.app.load_image(self.image,r['evidence'],(1100,390),self.app.get_rotation(r['path']))
- main
  def copy(self,event=None):return self.app.clipboard('\n'.join('\t'.join(str(x) for x in self.tree.item(k,'values')) for k in self.tree.selection()))
  def copy_path(self):
   r=self.selected()
@@ -466,7 +441,6 @@ class IndexWindow:
    except Exception as exc:messagebox.showerror('Подтверждение',str(exc),parent=self.win)
  def preview(self):
   r=self.selected()
- stage1-reliability
   if not r or self.fetching:return
   self.fetching=True;self.info.set('Извлечение кадра…')
   def done(path,message):
@@ -476,24 +450,6 @@ class IndexWindow:
    else:self.info.set(message)
   self.app.fetch_frame(self.win,r['path'],r['ts'],done)
  def drop_temp(self):
-  if not r:return
-  if self.proc and self.proc.poll() is None:return
-  self.cleanup();fd,path=tempfile.mkstemp(suffix='.jpg',prefix='shira-preview-');os.close(fd);self.temp=Path(path)
-  command=[sys.executable,str(ROOT/'tools/frame_preview.py'),r['path'],str(r['ts']),str(self.temp)]
-  self.proc=subprocess.Popen(command,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=subprocess.CREATE_NO_WINDOW if os.name=='nt' else 0);self.deadline=time.monotonic()+25;self.info.set('Извлечение кадра…');self.win.after(150,self.poll)
- def poll(self):
-  if not self.win.winfo_exists():return
-  if self.proc.poll() is None:
-   if time.monotonic()>self.deadline:
-    from recognition import kill_tree
-    kill_tree(self.proc.pid);self.proc.wait(3);self.info.set('Тайм-аут извлечения кадра');self.cleanup();return
-   self.win.after(150,self.poll);return
-  if self.proc.returncode==0:
-   r=self.selected();self.app.load_image(self.image,self.temp,(1100,390),self.app.get_rotation(r['path']) if r else 0);self.info.set('Кадр на выбранном таймкоде')
-  else:self.info.set('Не удалось прочитать кадр. Возможно, исходник перемещён или кодек не поддержан.')
-  self.cleanup()
- def cleanup(self):
- main
   if self.temp:self.temp.unlink(missing_ok=True);self.temp=None
  def close(self):
   self.drop_temp();self.win.destroy()

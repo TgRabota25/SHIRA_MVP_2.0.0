@@ -36,7 +36,8 @@ def auto_profile():
  return key,dict(available_ram_gb=round(ram,1),physical_cores=cores)
 
 def settings():
- value=dict(profile='balanced',mode='short',long_step=1.0,long_ocr_every=3,language='rus+eng',recursive=True,patterns=DEFAULT_PATTERNS)
+ value=dict(profile='balanced',mode='short',long_step=1.0,long_ocr_every=3,language='rus+eng',recursive=True,patterns=DEFAULT_PATTERNS,
+  short_frames=0,short_ocr_frames=0,short_qr_ocr=True,short_qr_ocr_max=12,short_enhanced=True)
  try:
   loaded=json.loads((data_dir()/'settings-v2.json').read_text('utf-8'))
   if isinstance(loaded,dict):value.update(loaded)
@@ -48,10 +49,21 @@ def settings():
  try:value['long_ocr_every']=min(100,max(1,int(value['long_ocr_every'])))
  except (ValueError,TypeError):value['long_ocr_every']=3
  if value.get('language') not in ('rus','eng','rus+eng'):value['language']='rus+eng'
+ for key,low,high in (('short_frames',4,120),('short_ocr_frames',1,120)):
+  try:n=int(value.get(key,0))
+  except (ValueError,TypeError):n=0
+  value[key]=0 if n<=0 else min(high,max(low,n))
+ try:value['short_qr_ocr_max']=min(60,max(0,int(value.get('short_qr_ocr_max',12))))
+ except (ValueError,TypeError):value['short_qr_ocr_max']=12
+ value['short_qr_ocr']=bool(value.get('short_qr_ocr',True));value['short_enhanced']=bool(value.get('short_enhanced',True))
  return value
 
 def worker_config(value):
- result=dict(PROFILES[value['profile']]);result.update(value);result.update(root=str(ROOT),data_dir=str(data_dir()))
+ result=dict(PROFILES[value['profile']]);result.update(value)
+ # 0 = взять значение из профиля ПК.
+ if value.get('short_frames'):result['frames']=int(value['short_frames'])
+ if value.get('short_ocr_frames'):result['ocr_frames']=int(value['short_ocr_frames'])
+ result.update(root=str(ROOT),data_dir=str(data_dir()))
  return result
 
 def stamp(seconds):
