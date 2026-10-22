@@ -7,16 +7,25 @@ class FatalInputError(ValueError):pass
 IMAGES={'.png','.jpg','.jpeg','.bmp','.tif','.tiff','.webp'}
 TAIL_SAFE=0.15
 TAIL_IGNORE=0.3
+LABEL_LENGTHS=(13,15)
 OCR_DIGITS=str.maketrans('OoQDlI|SBZ','0000111582')
+ short-window-settings
+FUZZY_1041=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8}(?:[0-9OoQDlI|SBZ]{2})?)\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
+SPLIT_HEAD=re.compile(r'(?<!\d)(\d{4,6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d)(?!\d)')
+
 FUZZY_1041=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{10})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 SPLIT_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d)(?!\d)')
+ main
 SPLIT_MID=re.compile(r'(?<!\d)(\d{4,5})[^\d\n]{0,3}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d)(?!\d)')
-GLUE_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})(?!\d)')
+GLUE_HEAD=re.compile(r'(?<!\d)(\d{4,6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})(?!\d)')
 GLUE_MID=re.compile(r'(?<!\d)(\d{4,5})(?!\d)[^\d\n]{0,12}?[-–—]\s*(\d{4})(?!\d)')
 GLUE_TAIL=re.compile(r'[-–—]\s*(\d{4})\s*[-–—]\s*(\d)(?!\d)')
 OCR_SAMPLES=[]
 ALL_TEXTS=[]
+
+def fmt_label(digits):
+ return digits[:-5]+'-'+digits[-5:-1]+'-'+digits[-1]
 
 def trace(cfg,message):
  try:
@@ -80,23 +89,28 @@ def extract(text,cfg,source='text',fuzzy=False):
    if name.startswith('Яндекс груз') and ((match.start()>0 and text[match.start()-1]=='-') or (match.end()<len(text) and text[match.end()]=='-')):continue
    if name=='Ozon пробелы мягкий':
     digits=re.sub(r'\D','',number);number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
-   if name.startswith('Этикетка 10-4-1') or name=='Ozon старый':
+   if name.startswith('Этикетка 8/10-4-1') or name.startswith('Этикетка 10-4-1') or name=='Ozon старый':
     digits=re.sub(r'\D','',number)
+ short-window-settings
+    if len(digits) not in LABEL_LENGTHS:continue
+    number=fmt_label(digits)
+
     if len(digits)!=15:continue
     number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
    if name.startswith('Этикетка 8-4-1'):
     digits=re.sub(r'\D','',number)
     if len(digits)!=13:continue
     number=digits[:8]+'-'+digits[8:12]+'-'+digits[12:]
+ main
    value=(number,market,name)
    if not any(existing[0]==number for existing in out):out.append(value)
  if fuzzy and source=='text':
   for match in FUZZY_1041.finditer(text):
    raw=''.join(match.group(1,2,3))
-   if sum(c.isdigit() for c in raw)<12:continue
+   if sum(c.isdigit() for c in raw)<len(raw)-3:continue
    digits=raw.translate(OCR_DIGITS)
-   if not digits.isdigit() or len(digits)!=15:continue
-   number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
+   if not digits.isdigit() or len(digits) not in LABEL_LENGTHS:continue
+   number=fmt_label(digits)
    if not any(existing[0]==number for existing in out):out.append((number,'Ozon','Ozon старый мягкий'))
   for match in FUZZY_841.finditer(text):
    raw=''.join(match.group(1,2,3))
@@ -108,7 +122,7 @@ def extract(text,cfg,source='text',fuzzy=False):
  return out
 
 def assemble_split(texts):
- # Чёрный текст читает первые 6 цифр, инвертированный — белые 4 цифры; склеиваем по одинаковому хвосту -DDDD-D (шаблон 10-4-1).
+ # Чёрный текст читает начало (4–6 цифр), инвертированный — белые 4 цифры; склеиваем по одинаковому хвосту -DDDD-D (шаблоны 8-4-1 и 10-4-1).
  head={};mid={}
  for text in texts:
   text=str(text)[:50000]
@@ -118,12 +132,13 @@ def assemble_split(texts):
  for key in head:
   for x in sorted(head[key]):
    for y in sorted(mid.get(key,())):
+    if x==y or len(x)==5:continue
     number=x+y+'-'+key[0]+'-'+key[1]
-    if number not in out:out.append(number)
+    if len(re.sub(r'\D','',number)) in LABEL_LENGTHS and number not in out:out.append(number)
  return out
 
 def assemble_global(texts):
- # Склейка по всем кадрам видео: 6 цифр из одного кадра + 4 цифры из другого, общий хвост -DDDD, последняя цифра из любого кадра.
+ # Склейка по всем кадрам видео: начало (4–6 цифр) из одного кадра + 4 цифры из другого, общий хвост -DDDD, последняя цифра из любого кадра.
  # Варианты головы и середины выбираются голосованием по числу кадров (самые частые идут первыми).
  heads={};mids={};tails={}
  for text in texts:
@@ -135,10 +150,12 @@ def assemble_global(texts):
  for tail,hs in sorted(heads.items(),key=lambda kv:-sum(kv[1].values())):
   if tail not in tails:continue
   last=tails[tail].most_common(1)[0][0]
-  for x,_ in hs.most_common(2):
+  for x,_ in hs.most_common(3):
+   if len(x)==5:continue
    for y,_ in mids.get(tail,Counter()).most_common(2):
+    if x==y:continue
     number=x+y+'-'+tail+'-'+last
-    if number not in out:out.append(number)
+    if len(re.sub(r'\D','',number)) in LABEL_LENGTHS and number not in out:out.append(number)
  return out[:3]
 
 def tesseract_binary(cfg):
@@ -282,10 +299,14 @@ def recognize_frame(frame,cfg,do_ocr=True,orig=None):
      if region_found:break
     if region_found:break
    if region_found:break
+ short-window-settings
+  if not any(f['number'] and len(re.sub(r'\D','',f['number'])) in LABEL_LENGTHS for f in findings):
+
   if not any(f['number'] and len(re.sub(r'\D','',f['number'])) in (13,15) for f in findings):
+ main
    for number in assemble_split(all_texts):
     if any(f['number']==number for f in findings):continue
-    findings.append(dict(number=number,market='Ozon',method='QR-якорный OCR (склейка частей)' if regions else 'OCR (склейка частей)',raw=' || '.join(all_texts)[:2000],template='Ozon старый (склейка)',weak=False))
+    findings.append(dict(number=number,market='Ozon',method='QR-якорный OCR (склейка частей)' if regions else 'OCR (склейка частей)',raw=' || '.join(all_texts)[:2000],template='Этикетка 8/10-4-1 (склейка)',weak=True))
   if regions and not any(f['number'] and ('OCR' in f['method']) for f in findings) and cfg.get('qr_strong_ocr',True):
    try:
     crop=roi_images(src,rg,frame,angles)[0]
@@ -420,7 +441,7 @@ def scan(task,cfg,notify=lambda _:None):
     notify(dict(type='progress',cursor=ts,duration=duration))
    if mode=='short' and not any(h['number'] for h in hits):
     for number in assemble_global(ALL_TEXTS):
-     hits.append(dict(number=number,market='Ozon',method='QR-якорный OCR (склейка кадров)',raw=' || '.join(ALL_TEXTS)[:2000],template='Этикетка 10-4-1 (склейка кадров)',weak=True,ts=round(float(times[0]) if len(times) else 0.0,3),state='review',evidence=unknown_evidence))
+     hits.append(dict(number=number,market='Ozon',method='QR-якорный OCR (склейка кадров)',raw=' || '.join(ALL_TEXTS)[:2000],template='Этикетка 8/10-4-1 (склейка кадров)',weak=True,ts=round(float(times[0]) if len(times) else 0.0,3),state='review',evidence=unknown_evidence))
      trace(cfg,'%s: склейка номера по нескольким кадрам: %s'%(path.name,number))
    if mode=='short' and pass_no==0 and cfg.get('short_second_pass',True) and frames is None and len(times)>1 and not any(h['number'] for h in hits):
     plans.append([(a+b)/2 for a,b in zip(times,times[1:])])
