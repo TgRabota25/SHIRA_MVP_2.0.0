@@ -35,8 +35,15 @@ def auto_profile():
  key='powerful' if ram>=12 and cores>=8 else 'balanced' if ram>=5 and cores>=4 else 'weak'
  return key,dict(available_ram_gb=round(ram,1),physical_cores=cores)
 
+def _zero_or_range(value,low,high,default=0):
+ try:number=int(value)
+ except (ValueError,TypeError):return default
+ if number==0:return 0
+ return min(high,max(low,number))
+
 def settings():
- value=dict(profile='balanced',mode='short',long_step=1.0,long_ocr_every=3,language='rus+eng',recursive=True,patterns=DEFAULT_PATTERNS)
+ value=dict(profile='balanced',mode='short',long_step=1.0,long_ocr_every=3,language='rus+eng',recursive=True,patterns=DEFAULT_PATTERNS,
+  short_frames=0,short_ocr_frames=0,qr_text_fallback=True,qr_text_fallback_max=12,qr_strong_ocr=True,fuzzy_841=True)
  try:
   loaded=json.loads((data_dir()/'settings-v2.json').read_text('utf-8'))
   if isinstance(loaded,dict):value.update(loaded)
@@ -48,10 +55,17 @@ def settings():
  try:value['long_ocr_every']=min(100,max(1,int(value['long_ocr_every'])))
  except (ValueError,TypeError):value['long_ocr_every']=3
  if value.get('language') not in ('rus','eng','rus+eng'):value['language']='rus+eng'
+ value['short_frames']=_zero_or_range(value.get('short_frames'),4,120)
+ value['short_ocr_frames']=_zero_or_range(value.get('short_ocr_frames'),1,120)
+ try:value['qr_text_fallback_max']=min(60,max(0,int(value.get('qr_text_fallback_max',12))))
+ except (ValueError,TypeError):value['qr_text_fallback_max']=12
+ for key in ('qr_text_fallback','qr_strong_ocr','fuzzy_841'):value[key]=bool(value.get(key,True))
  return value
 
 def worker_config(value):
  result=dict(PROFILES[value['profile']]);result.update(value);result.update(root=str(ROOT),data_dir=str(data_dir()))
+ if int(value.get('short_frames',0) or 0)>0:result['frames']=int(value['short_frames'])
+ if int(value.get('short_ocr_frames',0) or 0)>0:result['ocr_frames']=int(value['short_ocr_frames'])
  return result
 
 def stamp(seconds):

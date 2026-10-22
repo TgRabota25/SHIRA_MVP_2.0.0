@@ -6,6 +6,8 @@ class FatalInputError(ValueError):pass
 IMAGES={'.png','.jpg','.jpeg','.bmp','.tif','.tiff','.webp'}
 TAIL_SAFE=0.15
 TAIL_IGNORE=0.3
+OCR_DIGITS=str.maketrans('OoQDlI|SBZ','0000111582')
+FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 
 def native_limits():
  for key in ['OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS']:os.environ[key]='1'
@@ -53,7 +55,7 @@ def patterns(cfg):
  if not out:raise ValueError('Нет шаблонов распознавания')
  return out
 
-def extract(text,cfg,source='text'):
+def extract(text,cfg,source='text',fuzzy=False):
  text=str(text)[:50000];out=[]
  for regex,market,name,required_source in patterns(cfg):
   if required_source=='qr' and source!='qr':continue
@@ -66,6 +68,15 @@ def extract(text,cfg,source='text'):
     digits=re.sub(r'\D','',number);number=digits[:10]+'-'+digits[10:14]+'-'+digits[14:]
    value=(number,market,name)
    if not any(existing[0]==number for existing in out):out.append(value)
+ # Мягкий разбор 8-4-1: типичные ошибки OCR (O/0, l/1, S/5, B/8, Z/2) и точки вместо тире.
+ if fuzzy and source=='text':
+  for match in FUZZY_841.finditer(text):
+   raw=''.join(match.group(1,2,3))
+   if sum(c.isdigit() for c in raw)<10:continue
+   digits=raw.translate(OCR_DIGITS)
+   if not digits.isdigit() or len(digits)!=13:continue
+   number=digits[:8]+'-'+digits[8:12]+'-'+digits[12:]
+   if not any(existing[0]==number for existing in out):out.append((number,'Шаблон 8-4-1','Этикетка 8-4-1 мягкий'))
  return out
 
 def tesseract_binary(cfg):
@@ -142,6 +153,7 @@ def roi_images(frame,regions):
 
 def recognize_frame(frame,cfg,do_ocr=True):
  import cv2
+ fuzzy=bool(cfg.get('fuzzy_841',True))
  codes,regions=qr_regions(frame);findings=[];raw_codes=[]
  for code in codes:
   raw=str(code.text)[:2000];raw_codes.append(raw)
@@ -156,13 +168,28 @@ def recognize_frame(frame,cfg,do_ocr=True):
     gray=cv2.cvtColor(rotated,cv2.COLOR_BGR2GRAY) if len(rotated.shape)==3 else rotated
     gray=cv2.createCLAHE(clipLimit=2.0,tileGridSize=(8,8)).apply(gray)
     text=ocr(gray,cfg,11)
-    for number,market,template in extract(text,cfg):
+    for number,market,template in extract(text,cfg,fuzzy=fuzzy):
      key=(number,index)
      if key in seen:continue
      seen.add(key);region_found=True
      findings.append(dict(number=number,market=market,method='QR-якорный OCR' if regions and index<len(regions) else 'OCR',raw=text[:2000],template=template,weak=('мягкий' in template)))
     if region_found:break
    if region_found:break
+  # Усиленный проход: QR есть, а трек в тексте не найден — увеличиваем блок у QR и бинаризуем.
+  if regions and not any('OCR' in f['method'] for f in findings) and cfg.get('qr_strong_ocr',True):
+   try:
+    crop=roi_images(frame,regions)[0]
+    big=cv2.resize(crop,None,fx=2,fy=2,interpolation=cv2.INTER_CUBIC)
+    gray=cv2.cvtColor(big,cv2.COLOR_BGR2GRAY) if len(big.shape)==3 else big
+    gray=cv2.GaussianBlur(gray,(3,3),0);_,bw=cv2.threshold(gray,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    for rotation in (0,90,180,270):
+     image=bw if rotation==0 else cv2.rotate(bw,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
+     text=ocr(image,cfg,6);added=False
+     for number,market,template in extract(text,cfg,fuzzy=fuzzy):
+      if any(f['number']==number for f in findings):continue
+      added=True;findings.append(dict(number=number,market=market,method='QR-якорный OCR (усиленный)',raw=text[:2000],template=template,weak=True))
+     if added:break
+   except (TimeoutError,RuntimeError):pass
  if not findings and raw_codes:findings.append(dict(number='',market='',method='QR без трека',raw='\n'.join(raw_codes)[:2000],template=''))
  return findings
 
@@ -218,7 +245,7 @@ def scan(task,cfg,notify=lambda _:None):
    frames=None
   notify(dict(type='metadata',duration=duration,cursor=start))
   if cfg.get('probe_only'):return dict(state='pending',duration=duration,cursor=start,hits=[])
-  evidence_cache={};warnings=[];read=0
+  evidence_cache={};warnings=[];read=0;fb_used=0
   ocr_indices={int(round(i)) for i in np.linspace(0,max(0,len(times)-1),min(len(times),cfg['ocr_frames']))}
   for index,ts in enumerate(times):
    if frames is not None:frame=frames[0]
@@ -230,6 +257,11 @@ def scan(task,cfg,notify=lambda _:None):
    try:found=recognize_frame(frame,cfg,do_ocr)
    except (TimeoutError,RuntimeError) as exc:
     found=recognize_frame(frame,cfg,False);warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
+   # Короткая сессия: QR найден, трека в нём нет, а OCR на этом кадре не запускался — дочитываем текст этикетки.
+   if mode=='short' and not do_ocr and cfg.get('qr_text_fallback',True) and fb_used<int(cfg.get('qr_text_fallback_max',12)) and found and not any(h['number'] for h in found):
+    fb_used+=1
+    try:found=recognize_frame(frame,cfg,True)
+    except (TimeoutError,RuntimeError) as exc:warnings.append(str(exc));gaps.append((ts,min(duration,ts+cfg.get('long_step',1)),str(exc)))
    for h in found:
     if not h['number']:
      unknown=True
