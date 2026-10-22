@@ -12,7 +12,11 @@ FUZZY_841=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{8})\s*[-–—−.]\s*([
 FUZZY_1041=re.compile(r'(?<![0-9A-Za-z])([0-9OoQDlI|SBZ]{10})\s*[-–—−.]\s*([0-9OoQDlI|SBZ]{4})\s*[-–—−.]\s*([0-9OoQDlI|SBZ])(?![0-9A-Za-z])')
 SPLIT_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
 SPLIT_MID=re.compile(r'(?<!\d)(\d{4,5})[^\d\n]{0,3}?[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
+GLUE_HEAD=re.compile(r'(?<!\d)(\d{6})(?!\d)[^\d\n]{0,25}?[-–—]\s*(\d{4})(?!\d)')
+GLUE_MID=re.compile(r'(?<!\d)(\d{4,5})(?!\d)[^\d\n]{0,12}?[-–—]\s*(\d{4})(?!\d)')
+GLUE_TAIL=re.compile(r'[-–—]\s*(\d{4})\s*[-–—]\s*(\d{1,3})(?!\d)')
 OCR_SAMPLES=[]
+ALL_TEXTS=[]
 
 def trace(cfg,message):
  try:
@@ -109,6 +113,24 @@ def assemble_split(texts):
     number=x+y+'-'+key[0]+'-'+key[1]
     if number not in out:out.append(number)
  return out
+
+def assemble_global(texts):
+ # Склейка по всем кадрам видео: 6 цифр из одного кадра + 4 цифры из другого, общий хвост -DDDD, последняя цифра из любого кадра.
+ heads={};mids={};tails={}
+ for text in texts:
+  text=str(text)[:50000]
+  for m in GLUE_HEAD.finditer(text):heads.setdefault(m.group(2),set()).add(m.group(1))
+  for m in GLUE_MID.finditer(text):mids.setdefault(m.group(2),set()).add(m.group(1)[-4:])
+  for m in GLUE_TAIL.finditer(text):tails.setdefault(m.group(1),Counter())[m.group(2)]+=1
+ out=[]
+ for tail,hs in heads.items():
+  if tail not in tails:continue
+  last=tails[tail].most_common(1)[0][0]
+  for x in sorted(hs):
+   for y in sorted(mids.get(tail,())):
+    number=x+y+'-'+tail+'-'+last
+    if number not in out:out.append(number)
+ return out[:3]
 
 def tesseract_binary(cfg):
  override=os.environ.get('SHIRA_TESSERACT')
@@ -265,13 +287,15 @@ def recognize_frame(frame,cfg,do_ocr=True,orig=None):
      blurred=cv2.GaussianBlur(base,(3,3),0);_,bw=cv2.threshold(blurred,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
      for rotation in (0,90,180,270):
       image=bw if rotation==0 else cv2.rotate(bw,{90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rotation])
-      text=ocr(image,cfg,6);added=False
+      text=ocr(image,cfg,6);all_texts.append(text);added=False
       for number,market,template in extract(text,cfg,fuzzy=fuzzy):
        if any(f['number']==number for f in findings):continue
        added=True;findings.append(dict(number=number,market=market,method='QR-якорный OCR (усиленный)',raw=text[:2000],template=template,weak=True))
       if added:break
      if any('усиленный' in f['method'] for f in findings):break
    except (TimeoutError,RuntimeError):pass
+  ALL_TEXTS.extend(t[:4000] for t in all_texts)
+  del ALL_TEXTS[:-60]
  if not findings and raw_codes:findings.append(dict(number='',market='',method='QR без трека',raw='\n'.join(raw_codes)[:2000],template=''))
  return findings
 
@@ -326,6 +350,7 @@ def scan(task,cfg,notify=lambda _:None):
  if identity(path)!=cfg['source_id']:raise FatalInputError('Исходный файл изменился: добавьте его заново')
  start=float(task['cursor']);mode=task['mode'];hits=[];unknown=False;unknown_evidence='';cap=None;gaps=[]
  rot=int(cfg.get('rotation',0) or 0);window=(0.0,0.0)
+ del ALL_TEXTS[:]
  try:
   if path.suffix.lower() in IMAGES:
    from PIL import Image,ImageOps
@@ -384,6 +409,10 @@ def scan(task,cfg,notify=lambda _:None):
      if h['number'] not in evidence_cache:evidence_cache[h['number']]=save_evidence(frame,cfg,task['id'],ts,h['number'])
      h['evidence']=evidence_cache[h['number']];hits.append(h)
     notify(dict(type='progress',cursor=ts,duration=duration))
+   if mode=='short' and not any(h['number'] for h in hits):
+    for number in assemble_global(ALL_TEXTS):
+     hits.append(dict(number=number,market='Ozon',method='QR-якорный OCR (склейка кадров)',raw=' || '.join(ALL_TEXTS)[:2000],template='Этикетка 10-4-1 (склейка кадров)',weak=True,ts=round(float(times[0]) if len(times) else 0.0,3),state='review',evidence=unknown_evidence))
+     trace(cfg,'%s: склейка номера по нескольким кадрам: %s'%(path.name,number))
    if mode=='short' and pass_no==0 and cfg.get('short_second_pass',True) and frames is None and len(times)>1 and not any(h['number'] for h in hits):
     plans.append([(a+b)/2 for a,b in zip(times,times[1:])])
     trace(cfg,'%s: трек не найден, второй проход по %d промежуточным кадрам'%(path.name,len(plans[1])))
