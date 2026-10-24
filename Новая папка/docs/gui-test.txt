@@ -1,0 +1,1 @@
+PASS — Linux Python 3.13.16 / Tk 9 / Xvfb. Main window and custom icon loaded; multi-selection; clipboard text/paths; global SQL sorting; Auto button; short review and preferences rendered; long index and timestamp frame preview rendered; shutdown clean. Windows shell icon / CF_HDROP not executed here.

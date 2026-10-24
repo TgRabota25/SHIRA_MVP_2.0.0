@@ -1,0 +1,40 @@
+Добавлено: 1
+Обработка: /home/user/workspace/v2/examples/control_qr_near_text.png
+control_qr_near_text.png: review
+{"review": 1}
+Добавлено: 1
+Обработка: /home/user/workspace/v2/examples/control_multi_label.avi
+control_multi_label.avi: done
+{"done": 1}
+Добавлено: 0
+{
+  "total": 2,
+  "hits": [
+    {
+      "id": 4,
+      "task_id": "b1d82672a3a6f1e2e6bb87a23e6aa53a907822e08a08caa7865d75ed40ff2403",
+      "number": "ii99999999999",
+      "market": "Ozon",
+      "ts": 4.0,
+      "method": "QR / штрихкод",
+      "state": "done",
+      "evidence": "",
+      "raw": "ii99999999999",
+      "path": "/home/user/workspace/v2/examples/control_multi_label.avi",
+      "name": "control_multi_label.avi"
+    },
+    {
+      "id": 5,
+      "task_id": "b1d82672a3a6f1e2e6bb87a23e6aa53a907822e08a08caa7865d75ed40ff2403",
+      "number": "ii99999999999",
+      "market": "Ozon",
+      "ts": 5.0,
+      "method": "QR / штрихкод",
+      "state": "done",
+      "evidence": "",
+      "raw": "ii99999999999",
+      "path": "/home/user/workspace/v2/examples/control_multi_label.avi",
+      "name": "control_multi_label.avi"
+    }
+  ]
+}
