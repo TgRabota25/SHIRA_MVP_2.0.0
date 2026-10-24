@@ -1,4 +1,4 @@
-"""Unified SHIRA editor UI: readable local icons and consistent controls."""
+"""Unified SHIRA editor UI with a distinct local icon for every action."""
 import logging,sys
 import tkinter as tk
 from tkinter import ttk,font
@@ -28,9 +28,11 @@ def icon_image(root,kind,disabled=False):
     def line(points):d.line([(x*scale,y*scale) for x,y in points],fill=color,width=2*scale,joint='curve')
     def box(rect):d.rectangle(tuple(v*scale for v in rect),outline=color,width=2*scale)
     def ellipse(rect):d.ellipse(tuple(v*scale for v in rect),outline=color,width=2*scale)
+    def arc(rect,start,end):d.arc(tuple(v*scale for v in rect),start,end,fill=color,width=2*scale)
     if kind=='file':
         line([(5,3),(14,3),(19,8),(19,21),(5,21),(5,3)]);line([(14,3),(14,8),(19,8)]);line([(9,14),(15,14)]);line([(12,11),(12,17)])
     elif kind=='folder':line([(3,6),(10,6),(12,9),(21,9),(21,20),(3,20),(3,6)])
+    elif kind=='folder_open':line([(3,7),(9,7),(11,10),(21,10),(21,20),(3,20),(3,7)]);line([(6,13),(18,13)])
     elif kind=='play':line([(7,4),(20,12),(7,20),(7,4)])
     elif kind=='stop':box((6,6,18,18))
     elif kind=='search':ellipse((3,3,16,16));line([(16,16),(22,22)])
@@ -39,12 +41,32 @@ def icon_image(root,kind,disabled=False):
         for y,x in [(5,8),(12,16),(19,10)]:line([(3,y),(21,y)]);box((x-2,y-3,x+2,y+3))
     elif kind=='auto':line([(14,2),(5,14),(11,14),(9,22),(20,9),(13,9),(14,2)])
     elif kind=='info':ellipse((3,3,21,21));line([(12,10),(12,17)]);ellipse((11,6,13,8))
-    elif kind=='backup':box((4,3,20,21));box((8,3,16,9));box((8,14,16,21))
-    elif kind=='copy':box((8,7,20,21));line([(15,4),(4,4),(4,17)])
-    elif kind=='delete':line([(4,6),(20,6)]);line([(9,3),(15,3)]);line([(6,6),(7,21),(17,21),(18,6)]);line([(10,10),(10,17)]);line([(14,10),(14,17)])
-    elif kind=='check':line([(4,12),(10,18),(21,5)])
+    elif kind=='database':ellipse((3,4,21,10));line([(3,7),(3,17)]);line([(21,7),(21,17)]);arc((3,14,21,20),0,180)
+    elif kind=='redo':arc((4,4,20,20),300,180);line([(17,3),(17,10),(10,10)])
+    elif kind=='gaps':line([(4,4),(20,4)]);line([(4,12),(9,12)]);line([(15,12),(20,12)]);line([(4,20),(20,20)])
+    elif kind=='restart':arc((4,4,20,20),120,420);line([(4,3),(4,10),(11,10)])
+    elif kind=='tag':line([(3,12),(12,3),(21,12),(12,21),(3,12)]);ellipse((9,9,13,13))
+    elif kind=='select_all':box((3,3,21,21));line([(7,12),(11,16),(18,7)])
+    elif kind=='link':ellipse((3,9,13,19));ellipse((11,5,21,15));line([(8,16),(16,8)])
+    elif kind=='file_copy':box((8,7,20,21));line([(15,4),(4,4),(4,17)])
+    elif kind=='table_copy':box((3,3,21,21));line([(3,9),(21,9)]);line([(3,15),(21,15)]);line([(12,9),(12,21)])
+    elif kind=='video':box((3,5,21,19));line([(10,9),(16,12),(10,15),(10,9)])
+    elif kind=='history':arc((4,4,20,20),90,360);line([(12,7),(12,13),(17,16)]);line([(4,3),(4,10),(11,10)])
+    elif kind=='summary':line([(4,4),(20,4)]);line([(4,10),(16,10)]);line([(4,16),(12,16)]);line([(17,14),(21,18)]);line([(21,14),(17,18)])
+    elif kind=='save':line([(4,3),(17,3),(20,6),(20,21),(4,21),(4,3)]);box((8,13,16,21));line([(8,3),(8,10),(16,10),(16,3)])
     elif kind=='close':line([(6,6),(18,18)]);line([(18,6),(6,18)])
-    elif kind=='open':box((3,9,15,21));line([(11,3),(21,3),(21,13)]);line([(10,14),(21,3)])
+    elif kind=='cancel':ellipse((3,3,21,21));line([(8,8),(16,16)]);line([(16,8),(8,16)])
+    elif kind=='continue':line([(5,4),(17,12),(5,20),(5,4)])
+    elif kind=='check':line([(4,12),(10,18),(21,5)])
+    elif kind=='confirm_number':box((3,3,21,21));line([(7,12),(11,16),(18,7)]);line([(7,20),(17,20)])
+    elif kind=='confirm_track':ellipse((3,3,21,21));line([(7,12),(11,16),(18,7)])
+    elif kind=='delete':line([(4,6),(20,6)]);line([(9,3),(15,3)]);line([(6,6),(7,21),(17,21),(18,6)]);line([(10,10),(10,17)]);line([(14,10),(14,17)])
+    elif kind=='frame':box((3,3,21,21));line([(3,8),(8,8),(8,3)]);line([(16,3),(16,8),(21,8)]);line([(21,16),(16,16),(16,21)]);line([(8,21),(8,16),(3,16)])
+    elif kind=='grid':
+        for y in (4,11,18):
+            for x in (4,11,18):box((x,y,x+2,y+2))
+    elif kind=='import':line([(12,21),(12,8),(7,13)]);line([(12,8),(17,13)]);line([(4,3),(20,3),(20,7)])
+    elif kind=='report':line([(5,3),(14,3),(19,8),(19,21),(5,21),(5,3)]);line([(14,3),(14,8),(19,8)]);line([(8,12),(16,12)]);line([(8,16),(16,16)])
     elif kind=='left':line([(15,4),(7,12),(15,20)])
     elif kind=='right':line([(9,4),(17,12),(9,20)])
     elif kind=='list':
@@ -55,13 +77,13 @@ def icon_image(root,kind,disabled=False):
     return ImageTk.PhotoImage(raster,master=root)
 
 MAPPING={
- 'Добавить файлы':'file','Добавить папку':'folder','Обработать очередь':'play','Стоп':'stop','Найти':'search','Экспорт':'export','Настройки / шаблоны':'settings','Авто':'auto','Инструкция':'info','Бэкап БД':'backup','Сброс':'refresh','Повторить выбранные':'refresh','Повторить пропуски':'refresh','Сначала / переиндексировать':'refresh','Индекс этикеток':'list','Выделить страницу':'check','К файлу':'folder','Копировать путь':'copy','Копировать файл':'copy','Копировать строки':'copy','Копировать файл для письма':'copy','Открыть видео':'open','Открыть во внешней программе':'open','История':'list','Сводка':'list','Сохранить':'backup','Закрыть':'close','Отмена':'close','Продолжить':'right','Подтвердить номер':'check','Подтвердить трек':'check','Удалить…':'delete','Кадр крупно':'open','Индекс / все кадры':'list'}
+ 'Добавить файлы':'file','Добавить папку':'folder','Обработать очередь':'play','Стоп':'stop','Найти':'search','Экспорт':'export','Настройки / шаблоны':'settings','Авто':'auto','Инструкция':'info','Бэкап БД':'database','Повторить выбранные':'redo','Повторить пропуски':'gaps','Сначала / переиндексировать':'restart','Индекс этикеток':'tag','Выделить страницу':'select_all','К файлу':'folder_open','Копировать путь':'link','Копировать файл':'file_copy','Копировать строки':'table_copy','Копировать файл для письма':'file_copy','Открыть видео':'video','История':'history','Сводка':'summary','Сохранить':'save','Закрыть':'close','Отмена':'cancel','Продолжить':'continue','Подтвердить номер':'confirm_number','Подтвердить трек':'confirm_track','Удалить…':'delete','Кадр крупно':'frame','Индекс / все кадры':'grid','Импортировать результаты предыдущего MVP':'import','Открыть отчёт сканирования (scan-v2.log)':'report'}
 
 def apply(root):
     root._studio_font=font.Font(root=root,family='Segoe UI',size=11)
     f=root._studio_font;s=ttk.Style(root)
-    if 'shira_editor_v2' not in s.theme_names():s.theme_create('shira_editor_v2',parent='clam')
-    s.theme_use('shira_editor_v2');s.configure('.',font=f,background=BG,foreground=TEXT)
+    if 'shira_editor_v3' not in s.theme_names():s.theme_create('shira_editor_v3',parent='clam')
+    s.theme_use('shira_editor_v3');s.configure('.',font=f,background=BG,foreground=TEXT)
     for name in ('TFrame','TLabel','TCheckbutton','TRadiobutton','TLabelframe','TLabelframe.Label'):s.configure(name,background=BG,foreground=TEXT,font=f)
     s.configure('TLabelframe',borderwidth=0,relief='flat')
     s.configure('TButton',background=BUTTON,foreground=TEXT,font=f,padding=(10,4),borderwidth=1,bordercolor=BUTTON,lightcolor=BUTTON,darkcolor=BUTTON,relief='flat',anchor='center')
@@ -122,7 +144,7 @@ def apply(root):
             except tk.TclError:pass
         root.after_idle(later)
     walk(root);root.bind_all('<Map>',mapped,add='+')
-    LOG.info('Editor UI v2 active: readable icons, Segoe UI 11pt')
+    LOG.info('Editor UI v3 active: distinct action icons, Segoe UI 11pt')
 
 def install(module):
     original=module.Application
