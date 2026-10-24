@@ -58,7 +58,7 @@ def apply(root):
     s.configure('Treeview',font=f,rowheight=f.metrics('linespace')+12,background=BG,fieldbackground=BG,foreground=TEXT,borderwidth=0)
     s.configure('Treeview.Heading',font=f,background=PANEL,foreground=MUTED,padding=(9,8),relief='flat',borderwidth=0)
     s.map('Treeview',background=[('selected','#12536A')],foreground=[('selected','#FFFFFF')])
-    s.configure('TScrollbar',background='#28505B',troughcolor=BG,arrowcolor=MUTED,bordercolor=BG,lightcolor=BG,darkcolor=BG)
+    s.configure('TScrollbar',background='#28505B',troughcolor=BG,arrowcolor=MUTED,bordercolor=BG,lightcolor='#3C485B',darkcolor='#151A23')
     s.configure('TNotebook',background=BG,borderwidth=0)
     s.configure('TNotebook.Tab',font=f,background=PANEL,foreground=MUTED,padding=(12,6))
     s.map('TNotebook.Tab',background=[('selected',BG)],foreground=[('selected',TEXT)])
@@ -95,6 +95,7 @@ def apply(root):
         for child in w.winfo_children():walk(child)
     def mapped(event):
         w=event.widget
+        if isinstance(w,str):return
         if w not in seen:
             def later():
                 try:

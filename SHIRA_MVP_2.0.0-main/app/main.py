@@ -23,29 +23,7 @@ def make_scrollable(parent,padding=15):
   elif getattr(event,'num',0)==5:canvas.yview_scroll(1,'units')
   return 'break'
  parent.bind('<MouseWheel>',wheel,add='+');parent.bind('<Button-4>',wheel,add='+');parent.bind('<Button-5>',wheel,add='+')
-
  return canvas,inner
-
-def plain(value):
- # Убирает декоративный значок из значения фильтра/сессии.
- value=str(value)
- return value.split(' ',1)[1] if value.startswith(('⚡ ','🚀 ','📋 ','🗂 ')) else value
-
-def center_window(win):
- # Ставит окно по центру и плавно проявляет его.
- try:
-  win.update_idletasks()
-  w=win.winfo_width();h=win.winfo_height()
-  x=max(0,(win.winfo_screenwidth()-w)//2);y=max(0,(win.winfo_screenheight()-h)//2)
-  win.geometry(f'+{x}+{y}')
-  win.attributes('-alpha',0)
-  def fade(step=0):
-   if not win.winfo_exists():return
-   step+=1
-   win.attributes('-alpha',min(1,step/12))
-   if step<12:win.after(16,lambda:fade(step))
-  win.after(20,fade)
- except Exception:pass
 
 class Application:
  def __init__(self,root,store):
@@ -54,7 +32,7 @@ class Application:
   root.title('SHIRA '+VERSION+' — этикетки и видеоархив');root.geometry('1320x850');root.minsize(1000,650);icon(root)
   root.protocol('WM_DELETE_WINDOW',self.close);root.report_callback_exception=self.callback_error
   style=ttk.Style();style.theme_use('clam');style.configure('Treeview',rowheight=28);style.configure('TButton',padding=5)
-  self.build();self.store.recover();self.refresh();self.bind_copy(root);root.bind('<Button-1>',self.clear_selection_if_empty,add='+');root.after(120,self.poll)
+  self.build();self.store.recover();self.refresh();self.bind_copy(root);root.after(120,self.poll)
  def callback_error(self,kind,value,tb):
   self.engine.logger.error('GUI callback',exc_info=(kind,value,tb));messagebox.showerror('SHIRA',str(value),parent=self.root)
  def post(self,kind,value):
@@ -90,8 +68,8 @@ class Application:
   ttk.Button(header,text='Инструкция',command=lambda:self.safe_open(ROOT/'README_RU.md')).pack(side='right')
   bar=ttk.Frame(frame);bar.pack(fill='x',pady=8)
   ttk.Button(bar,text='Добавить файлы',command=self.add_files).pack(side='left');ttk.Button(bar,text='Добавить папку',command=self.add_folder).pack(side='left',padx=4)
-  ttk.Label(bar,text='Сессия:').pack(side='left',padx=(8,2));self.mode=tk.StringVar(value='⚡ Короткая' if self.cfg['mode']=='short' else '🚀 Длительная')
-  ttk.Combobox(bar,textvariable=self.mode,values=['⚡ Короткая','🚀 Длительная'],state='readonly',width=13).pack(side='left')
+  ttk.Label(bar,text='Сессия:').pack(side='left',padx=(8,2));self.mode=tk.StringVar(value='Короткая' if self.cfg['mode']=='short' else 'Длительная')
+  ttk.Combobox(bar,textvariable=self.mode,values=['Короткая','Длительная'],state='readonly',width=13).pack(side='left')
   ttk.Label(bar,text='Профиль:').pack(side='left',padx=(8,2));self.profile=tk.StringVar(value=self.cfg['profile'])
   ttk.Combobox(bar,textvariable=self.profile,values=list(PROFILES),state='readonly',width=11).pack(side='left');ttk.Button(bar,text='Авто',command=self.auto).pack(side='left',padx=4)
   ttk.Button(bar,text='Настройки / шаблоны',command=self.preferences).pack(side='right')
@@ -101,9 +79,9 @@ class Application:
   ttk.Button(actions,text='Индекс этикеток',command=self.index).pack(side='left',padx=4);ttk.Button(actions,text='Экспорт',command=self.export).pack(side='right');ttk.Button(actions,text='Бэкап БД',command=self.backup).pack(side='right',padx=4)
   filters=ttk.Frame(frame);filters.pack(fill='x',pady=5)
   ttk.Label(filters,text='Поиск по треку / пути:').pack(side='left');self.search=tk.StringVar();entry=ttk.Entry(filters,textvariable=self.search,width=37);entry.pack(side='left',padx=4);entry.bind('<Return>',lambda e:self.find())
-  ttk.Button(filters,text='Найти',command=self.find).pack(side='left');self.state=tk.StringVar(value='📋 Все статусы');self.filter_mode=tk.StringVar(value='🗂 Все сессии')
-  statebox=ttk.Combobox(filters,textvariable=self.state,values=['📋 Все статусы']+[('⏳ '+v if v=='На проверке' else '⚠ '+v if v=='Ошибка' else '🟡 '+v if v=='Частично' else '✅ '+v if v=='Готово' else '🔵 '+v) for v in LABELS.values()],state='readonly',width=20);statebox.pack(side='left',padx=5);statebox.bind('<<ComboboxSelected>>',lambda e:self.find())
-  mb=ttk.Combobox(filters,textvariable=self.filter_mode,values=['🗂 Все сессии','⚡ Короткая','🚀 Длительная'],state='readonly',width=15);mb.pack(side='left');mb.bind('<<ComboboxSelected>>',lambda e:self.find())
+  ttk.Button(filters,text='Найти',command=self.find).pack(side='left');self.state=tk.StringVar(value='Все статусы');self.filter_mode=tk.StringVar(value='Все сессии')
+  statebox=ttk.Combobox(filters,textvariable=self.state,values=['Все статусы']+list(LABELS.values()),state='readonly',width=20);statebox.pack(side='left',padx=5);statebox.bind('<<ComboboxSelected>>',lambda e:self.find())
+  mb=ttk.Combobox(filters,textvariable=self.filter_mode,values=['Все сессии','Короткая','Длительная'],state='readonly',width=15);mb.pack(side='left');mb.bind('<<ComboboxSelected>>',lambda e:self.find())
   ttk.Button(filters,text='Сброс',command=self.clear_filter).pack(side='left',padx=4)
   table=ttk.Frame(frame);table.pack(fill='both',expand=True)
   cols=('name','mode','state','number','market','cursor','duration','hit_count','path')
@@ -122,12 +100,8 @@ class Application:
   ttk.Button(pathbar,text='К файлу',command=self.reveal).pack(side='left');ttk.Button(pathbar,text='Копировать путь',command=self.copy_paths).pack(side='left',padx=3);ttk.Button(pathbar,text='Копировать файл',command=self.copy_selected_files).pack(side='left')
   self.status=tk.StringVar(value='Готово');ttk.Label(frame,textvariable=self.status).pack(fill='x',pady=4)
   self.log=tk.Text(frame,height=5,wrap='word',state='disabled');self.log.pack(fill='x')
-
- def clear_selection_if_empty(self,event):
-  if event.widget is self.tree:return
-  if self.tree.selection():self.tree.selection_remove(*self.tree.selection())
  def active_cfg(self):
-  self.cfg['profile']=self.profile.get();self.cfg['mode']='short' if plain(self.mode.get())=='Короткая' else 'long';atomic_json(data_dir()/'settings-v2.json',self.cfg);return worker_config(self.cfg)
+  self.cfg['profile']=self.profile.get();self.cfg['mode']='short' if self.mode.get()=='Короткая' else 'long';atomic_json(data_dir()/'settings-v2.json',self.cfg);return worker_config(self.cfg)
  def auto(self):
   profile,stats=auto_profile();self.profile.set(profile);self.active_cfg();self.status.set(f"Авто: {PROFILES[profile]['label']}; доступно RAM {stats['available_ram_gb']} ГБ, физических ядер {stats['physical_cores']}. Для новых заданий.")
  def add_files(self):
@@ -175,7 +149,7 @@ class Application:
   except Exception as exc:messagebox.showerror('Повтор пропусков',str(exc),parent=self.root);return
   self.refresh();self.status.set(f'Пропуски вернены в очередь: {len(keys)}. Нажмите «Обработать очередь».')
  def find(self):self.page=0;self.refresh()
- def clear_filter(self):self.search.set('');self.state.set('📋 Все статусы');self.filter_mode.set('🗂 Все сессии');self.find()
+ def clear_filter(self):self.search.set('');self.state.set('Все статусы');self.filter_mode.set('Все сессии');self.find()
  def sort_by(self,col):
   if col==self.sort:self.desc=not self.desc
   else:self.sort=col;self.desc=False
@@ -185,7 +159,7 @@ class Application:
   if value<0 or value*200>=self.total:return
   self.page=value;self.refresh()
  def refresh(self):
-  keep=set(self.selected()) if hasattr(self,'tree') else set();state=next((k for k,v in LABELS.items() if v==plain(self.state.get())),'');mode={'Короткая':'short','Длительная':'long'}.get(plain(self.filter_mode.get()),'')
+  keep=set(self.selected()) if hasattr(self,'tree') else set();state=next((k for k,v in LABELS.items() if v==self.state.get()),'');mode={'Короткая':'short','Длительная':'long'}.get(self.filter_mode.get(),'')
   rows,total=self.store.page(search=self.search.get(),state=state,mode=mode,sort=self.sort,descending=self.desc,page=self.page)
   if not rows and self.page and total:self.page=max(0,(total-1)//200);return self.refresh()
   self.total=total;self.rows={r['id']:r for r in rows};self.tree.delete(*self.tree.get_children())
@@ -271,7 +245,7 @@ class Application:
   if not path.is_file():messagebox.showinfo('Отчёт сканирования','Отчёта пока нет: он создаётся после первой обработки короткой сессии.',parent=self.root);return
   self.safe_open(path)
  def preferences(self):
-  win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('980x900');win.minsize(860,560);win.resizable(True,True);self.bind_copy(win);center_window(win)
+  win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('980x900');win.minsize(860,560);win.resizable(True,True);self.bind_copy(win)
   canvas,frame=make_scrollable(win)
   ttk.Label(frame,text='Изменения применяются к новым заданиям. Уже добавленные используют сохранённые настройки.').pack(anchor='w')
   ttk.Label(frame,text='Шаг поиска QR в длинном видео, секунд (0.1–60):').pack(anchor='w',pady=(10,0));step=tk.StringVar(value=str(self.cfg['long_step']));ttk.Entry(frame,textvariable=step).pack(fill='x')
@@ -344,7 +318,7 @@ class Application:
   if not keys:return
   key=keys[0];row=self.store.get(key)
   if row['mode']=='long':self.index(key);return
-  win=tk.Toplevel(self.root);icon(win);win.title('Проверка: '+row['name']);win.geometry('1180x920');win.minsize(960,700);win.resizable(True,True);self.bind_copy(win);center_window(win)
+  win=tk.Toplevel(self.root);icon(win);win.title('Проверка: '+row['name']);win.geometry('1180x920');win.minsize(960,700);win.resizable(True,True);self.bind_copy(win)
   frame=ttk.Frame(win,padding=12);frame.pack(fill='both',expand=True)
   path=tk.StringVar(value=row['path']);ttk.Entry(frame,textvariable=path,state='readonly').pack(fill='x')
   buttons=ttk.Frame(frame);buttons.pack(fill='x',pady=5)
@@ -388,7 +362,7 @@ class Application:
    label._photo=ImageTk.PhotoImage(im);label.configure(image=label._photo,text='')
   except Exception as exc:label.configure(text='Ошибка кадра: '+str(exc))
  def history(self,key):
-  win=tk.Toplevel(self.root);icon(win);win.title('История и пропуски');win.geometry('980x700');win.minsize(760,520);win.resizable(True,True);self.bind_copy(win);center_window(win)
+  win=tk.Toplevel(self.root);icon(win);win.title('История и пропуски');win.geometry('980x700');win.minsize(760,520);win.resizable(True,True);self.bind_copy(win)
   text=tk.Text(win,wrap='word');text.pack(fill='both',expand=True)
   text.insert('end',json.dumps(dict(gaps=self.store.gaps(key),audit=self.store.history(key)),ensure_ascii=False,indent=2));text.configure(state='disabled')
  def index(self,key=None):
@@ -409,7 +383,7 @@ class FullImage:
  # Кадр в полном размере с прокруткой и поворотом: так читаются мелкие символы.
  def __init__(self,app,parent,path,key):
   if not path or not Path(path).is_file():messagebox.showinfo('SHIRA','Кадр ещё не загружен',parent=parent);return
-  self.app=app;self.path=path;self.key=key;win=self.win=tk.Toplevel(parent);icon(win);win.title('Кадр в полном размере');win.geometry('1280x860');win.minsize(900,640);win.resizable(True,True);center_window(win)
+  self.app=app;self.path=path;self.key=key;win=self.win=tk.Toplevel(parent);icon(win);win.title('Кадр в полном размере');win.geometry('1280x860');win.minsize(900,640);win.resizable(True,True)
   bar=ttk.Frame(win,padding=6);bar.pack(fill='x')
   for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(bar,text=label,command=lambda d=delta:self.turn(d)).pack(side='left',padx=2)
   ttk.Button(bar,text='Открыть во внешней программе',command=lambda:app.safe_open(self.path)).pack(side='left',padx=8)
@@ -430,7 +404,7 @@ class IndexWindow:
  SIZE=(1250,480)
  def __init__(self,app,key):
   self.app=app;self.key=key;self.page=0;self.sort='ts';self.desc=False;self.rows={};self.temp=None;self.current=None;self.fetching=False
-  win=self.win=tk.Toplevel(app.root);icon(win);win.title('Индекс этикеток — поиск и таймкоды');win.geometry('1360x980');win.minsize(1100,760);win.resizable(True,True);app.bind_copy(win);center_window(win);win.protocol('WM_DELETE_WINDOW',self.close)
+  win=self.win=tk.Toplevel(app.root);icon(win);win.title('Индекс этикеток — поиск и таймкоды');win.geometry('1360x980');win.minsize(1100,760);win.resizable(True,True);app.bind_copy(win);win.protocol('WM_DELETE_WINDOW',self.close)
   frame=ttk.Frame(win,padding=10);frame.pack(fill='both',expand=True);bar=ttk.Frame(frame);bar.pack(fill='x')
   self.query=tk.StringVar(value=app.search.get());ttk.Label(bar,text='Трек:').pack(side='left');entry=ttk.Entry(bar,textvariable=self.query,width=36);entry.pack(side='left',padx=4);entry.bind('<Return>',lambda e:self.search());ttk.Button(bar,text='Найти',command=self.search).pack(side='left');ttk.Button(bar,text='←',command=lambda:self.change(-1)).pack(side='left',padx=4);ttk.Button(bar,text='→',command=lambda:self.change(1)).pack(side='left');self.info=tk.StringVar();ttk.Label(bar,textvariable=self.info).pack(side='left',padx=8)
   cols=('number','ts','method','state','name','path');self.tree=ttk.Treeview(frame,columns=cols,show='headings',height=8,selectmode='extended')
@@ -451,7 +425,7 @@ class IndexWindow:
   else:self.sort=col;self.desc=False
   self.page=0;self.refresh()
  def summary(self):
-  rows=self.app.store.summary(self.key,self.query.get());win=tk.Toplevel(self.win);icon(win);win.title('Сводка: первые / последние наблюдения');win.geometry('1080x620');win.minsize(860,480);win.resizable(True,True);self.app.bind_copy(win);center_window(win)
+  rows=self.app.store.summary(self.key,self.query.get());win=tk.Toplevel(self.win);icon(win);win.title('Сводка: первые / последние наблюдения');win.geometry('1080x620');win.minsize(860,480);win.resizable(True,True);self.app.bind_copy(win)
   text=tk.Text(win,wrap='none');text.pack(fill='both',expand=True)
   text.insert('end','Номер\tПервое наблюдение\tПоследнее наблюдение\tКадров\tВидео\n')
   for r in rows:text.insert('end',f"{r['number']}\t{stamp(r['first_seen'])}\t{stamp(r['last_seen'])}\t{r['samples']}\t{r['path']}\n")
