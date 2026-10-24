@@ -1,0 +1,419 @@
+{
+  "imports": {
+    "libsharpyuv-0.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libpangocairo-1.0-0.dll": [
+      "GDI32.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libcairo-2.dll",
+      "libfontconfig-1.dll",
+      "libglib-2.0-0.dll",
+      "libgobject-2.0-0.dll",
+      "libharfbuzz-0.dll",
+      "libintl-8.dll",
+      "libpango-1.0-0.dll",
+      "libpangoft2-1.0-0.dll",
+      "libpangowin32-1.0-0.dll"
+    ],
+    "libiconv-2.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libunistring-5.dll": [
+      "libiconv-2.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libbrotlicommon.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libgcc_s_seh-1.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libwinpthread-1.dll"
+    ],
+    "libpixman-1-0.dll": [
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libicuin75.dll": [
+      "libicuuc75.dll",
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libstdc++-6.dll"
+    ],
+    "zlib1.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libLerc.dll": [
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libstdc++-6.dll"
+    ],
+    "libdeflate.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libexpat-1.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "liblzma-5.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libharfbuzz-0.dll": [
+      "libfreetype-6.dll",
+      "libgcc_s_seh-1.dll",
+      "GDI32.dll",
+      "libglib-2.0-0.dll",
+      "libgraphite2.dll",
+      "libintl-8.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "RPCRT4.dll",
+      "libstdc++-6.dll",
+      "USER32.dll",
+      "USP10.dll"
+    ],
+    "libleptonica-6.dll": [
+      "GDI32.dll",
+      "libgif-7.dll",
+      "libjpeg-8.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libopenjp2-7.dll",
+      "libpng16-16.dll",
+      "libtiff-6.dll",
+      "USER32.dll",
+      "libwebp-7.dll",
+      "libwebpmux-3.dll",
+      "zlib1.dll"
+    ],
+    "libarchive-13.dll": [
+      "ADVAPI32.dll",
+      "libb2-1.dll",
+      "libbz2-1.dll",
+      "libcrypto-3-x64.dll",
+      "libexpat-1.dll",
+      "libiconv-2.dll",
+      "KERNEL32.dll",
+      "liblz4.dll",
+      "liblzma-5.dll",
+      "msvcrt.dll",
+      "zlib1.dll",
+      "libzstd.dll"
+    ],
+    "libgobject-2.0-0.dll": [
+      "libffi-8.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libglib-2.0-0.dll"
+    ],
+    "libssh2-1.dll": [
+      "bcrypt.dll",
+      "CRYPT32.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "USER32.dll",
+      "WS2_32.dll",
+      "zlib1.dll"
+    ],
+    "libglib-2.0-0.dll": [
+      "ADVAPI32.dll",
+      "libintl-8.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "ole32.dll",
+      "SHELL32.dll",
+      "USER32.dll",
+      "WS2_32.dll",
+      "libpcre2-8-0.dll"
+    ],
+    "libcrypto-3-x64.dll": [
+      "ADVAPI32.dll",
+      "CRYPT32.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "USER32.dll",
+      "WS2_32.dll"
+    ],
+    "libbrotlidec.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libbrotlicommon.dll"
+    ],
+    "libbz2-1.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libidn2-0.dll": [
+      "libiconv-2.dll",
+      "libintl-8.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libunistring-5.dll"
+    ],
+    "libthai-0.dll": [
+      "libdatrie-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "SHLWAPI.dll"
+    ],
+    "libtesseract-5.dll": [
+      "libarchive-13.dll",
+      "libcurl-4.dll",
+      "libleptonica-6.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libwinpthread-1.dll",
+      "WS2_32.dll",
+      "libgcc_s_seh-1.dll",
+      "libstdc++-6.dll"
+    ],
+    "libpangoft2-1.0-0.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libfontconfig-1.dll",
+      "libfreetype-6.dll",
+      "libgio-2.0-0.dll",
+      "libglib-2.0-0.dll",
+      "libgobject-2.0-0.dll",
+      "libharfbuzz-0.dll",
+      "libintl-8.dll",
+      "libpango-1.0-0.dll"
+    ],
+    "libwebpmux-3.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libwebp-7.dll"
+    ],
+    "libffi-8.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libfreetype-6.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libbrotlidec.dll",
+      "libbz2-1.dll",
+      "libharfbuzz-0.dll",
+      "libpng16-16.dll",
+      "zlib1.dll"
+    ],
+    "libfribidi-0.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libjbig-0.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libintl-8.dll": [
+      "ADVAPI32.dll",
+      "libiconv-2.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libjpeg-8.dll": [
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "liblz4.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libpsl-5.dll": [
+      "libiconv-2.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libunistring-5.dll",
+      "WS2_32.dll",
+      "libidn2-0.dll"
+    ],
+    "libgmodule-2.0-0.dll": [
+      "libintl-8.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libglib-2.0-0.dll"
+    ],
+    "libpangowin32-1.0-0.dll": [
+      "ADVAPI32.dll",
+      "DWrite.dll",
+      "libgcc_s_seh-1.dll",
+      "GDI32.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libstdc++-6.dll",
+      "USER32.dll",
+      "libgio-2.0-0.dll",
+      "libglib-2.0-0.dll",
+      "libgobject-2.0-0.dll",
+      "libharfbuzz-0.dll",
+      "libintl-8.dll",
+      "libpango-1.0-0.dll"
+    ],
+    "libgif-7.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libgraphite2.dll": [
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libstdc++-6.dll"
+    ],
+    "libfontconfig-1.dll": [
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libexpat-1.dll",
+      "libfreetype-6.dll"
+    ],
+    "libcairo-2.dll": [
+      "libgcc_s_seh-1.dll",
+      "GDI32.dll",
+      "KERNEL32.dll",
+      "MSIMG32.dll",
+      "msvcrt.dll",
+      "ole32.dll",
+      "libstdc++-6.dll",
+      "USER32.dll",
+      "libfontconfig-1.dll",
+      "libfreetype-6.dll",
+      "libpixman-1-0.dll",
+      "libpng16-16.dll",
+      "zlib1.dll"
+    ],
+    "libgio-2.0-0.dll": [
+      "ADVAPI32.dll",
+      "DNSAPI.dll",
+      "libintl-8.dll",
+      "IPHLPAPI.DLL",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "ole32.dll",
+      "SHELL32.dll",
+      "SHLWAPI.dll",
+      "USER32.dll",
+      "WS2_32.dll",
+      "zlib1.dll",
+      "libglib-2.0-0.dll",
+      "libgmodule-2.0-0.dll",
+      "libgobject-2.0-0.dll"
+    ],
+    "libpango-1.0-0.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libfribidi-0.dll",
+      "libgio-2.0-0.dll",
+      "libglib-2.0-0.dll",
+      "libgobject-2.0-0.dll",
+      "libharfbuzz-0.dll",
+      "libintl-8.dll",
+      "libthai-0.dll"
+    ],
+    "libopenjp2-7.dll": [
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libdatrie-1.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libzstd.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libwebp-7.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libsharpyuv-0.dll"
+    ],
+    "libpng16-16.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "zlib1.dll"
+    ],
+    "libwinpthread-1.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libtiff-6.dll": [
+      "libdeflate.dll",
+      "libjbig-0.dll",
+      "libjpeg-8.dll",
+      "KERNEL32.dll",
+      "libLerc.dll",
+      "liblzma-5.dll",
+      "msvcrt.dll",
+      "libwebp-7.dll",
+      "zlib1.dll",
+      "libzstd.dll"
+    ],
+    "libcurl-4.dll": [
+      "ADVAPI32.dll",
+      "bcrypt.dll",
+      "CRYPT32.dll",
+      "libidn2-0.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "WLDAP32.dll",
+      "WS2_32.dll",
+      "libbrotlidec.dll",
+      "libpsl-5.dll",
+      "libssh2-1.dll",
+      "zlib1.dll",
+      "libzstd.dll"
+    ],
+    "libicuuc75.dll": [
+      "libicudt75.dll",
+      "ADVAPI32.dll",
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libwinpthread-1.dll",
+      "libstdc++-6.dll"
+    ],
+    "libb2-1.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libicudt75.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "libstdc++-6.dll": [
+      "libgcc_s_seh-1.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libwinpthread-1.dll"
+    ],
+    "libpcre2-8-0.dll": [
+      "KERNEL32.dll",
+      "msvcrt.dll"
+    ],
+    "tesseract.exe": [
+      "libtesseract-5.dll",
+      "libarchive-13.dll",
+      "libcurl-4.dll",
+      "libleptonica-6.dll",
+      "libtiff-6.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "libgcc_s_seh-1.dll",
+      "libstdc++-6.dll"
+    ]
+  },
+  "unresolved_nonstandard": []
+}
