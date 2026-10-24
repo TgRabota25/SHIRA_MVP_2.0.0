@@ -18,6 +18,8 @@ def run():
         import premium_titlebar,premium_windows
         premium_titlebar.install(app)
         premium_windows.install(app)
+    import archive_delete
+    archive_delete.install(app)
     app.main()
 
 if __name__=='__main__':
