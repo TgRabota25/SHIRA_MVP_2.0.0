@@ -9,6 +9,8 @@ def run():
     from config import data_dir
     folder=data_dir()/'logs';folder.mkdir(parents=True,exist_ok=True)
     logging.basicConfig(filename=str(folder/'desktop-startup.log'),level=logging.INFO,encoding='utf-8',force=True)
+    import licensing
+    licensing.ensure_licensed()
     import main as app
     if '--standard' not in sys.argv:
         import studio_ui,premium_windows
