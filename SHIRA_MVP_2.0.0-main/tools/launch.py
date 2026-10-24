@@ -11,7 +11,7 @@ def run():
     import main as app
     if '--standard' not in sys.argv:
         import premium_ui
-        for name in ('premium_layout','premium_compact'):
+        for name in ('premium_layout','premium_compact','premium_consistent'):
             module=__import__(name)
             module.install(premium_ui)
         premium_ui.install(app)
