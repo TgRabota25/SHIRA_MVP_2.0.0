@@ -1,0 +1,6 @@
+numpy==2.2.6
+opencv-python-headless==4.11.0.86
+Pillow==11.3.0
+zxing-cpp==2.3.0
+psutil==7.0.0
+openpyxl==3.1.5
