@@ -59,7 +59,6 @@ const
   ShellPanel = $00423607;
   ShellText = $00F0EDE3;
   ShellMuted = $00B6AF9A;
-  ShellAccent = $00A78716;
 
 procedure InitializeWizard();
 begin
@@ -68,8 +67,6 @@ begin
   WizardForm.InnerPage.Color := ShellBackground;
   WizardForm.FinishedPage.Color := ShellBackground;
   WizardForm.MainPanel.Color := ShellPanel;
-  WizardForm.Bevel.Color := ShellPanel;
-  WizardForm.Bevel1.Color := ShellPanel;
   WizardForm.InnerNotebook.Color := ShellBackground;
   WizardForm.WelcomeLabel1.Font.Color := ShellText;
   WizardForm.WelcomeLabel2.Font.Color := ShellText;
