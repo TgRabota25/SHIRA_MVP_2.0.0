@@ -1,0 +1,10 @@
+Defaulting to user installation because normal site-packages is not writeable
+Looking in links: workspace/v2/wheels
+Processing ./workspace/v2/wheels/et_xmlfile-2.0.0-py3-none-any.whl (from -r workspace/v2/requirements-windows-lock.txt (line 1))
+Processing ./workspace/v2/wheels/numpy-2.2.6-cp313-cp313-win_amd64.whl (from -r workspace/v2/requirements-windows-lock.txt (line 2))
+Processing ./workspace/v2/wheels/opencv_python_headless-4.11.0.86-cp37-abi3-win_amd64.whl (from -r workspace/v2/requirements-windows-lock.txt (line 3))
+Processing ./workspace/v2/wheels/openpyxl-3.1.5-py2.py3-none-any.whl (from -r workspace/v2/requirements-windows-lock.txt (line 4))
+Processing ./workspace/v2/wheels/pillow-11.3.0-cp313-cp313-win_amd64.whl (from -r workspace/v2/requirements-windows-lock.txt (line 5))
+Processing ./workspace/v2/wheels/psutil-7.0.0-cp37-abi3-win_amd64.whl (from -r workspace/v2/requirements-windows-lock.txt (line 6))
+Processing ./workspace/v2/wheels/zxing_cpp-2.3.0-cp313-cp313-win_amd64.whl (from -r workspace/v2/requirements-windows-lock.txt (line 7))
+Would install et_xmlfile-2.0.0 numpy-2.2.6 opencv-python-headless-4.11.0.86 openpyxl-3.1.5 pillow-11.3.0 psutil-7.0.0 zxing-cpp-2.3.0
