@@ -32,8 +32,18 @@ class Application:
   self.page=0;self.total=0;self.sort='created';self.desc=True;self.rows={};self.busy=0;self.closed=False;self.last_refresh=0;self.photo_window=None
   root.title('SHIRA '+VERSION+' — этикетки и видеоархив');root.geometry('1320x850');root.minsize(1000,650);icon(root)
   root.protocol('WM_DELETE_WINDOW',self.close);root.report_callback_exception=self.callback_error
-  style=ttk.Style();style.theme_use('clam');style.configure('Treeview',rowheight=28);style.configure('TButton',padding=5)
-  self.build();self.store.recover();self.refresh();self.bind_copy(root);root.bind('<Button-1>',self.clear_selection_if_empty,add='+');root.after(120,self.poll)
+  style=ttk.Style();style.theme_use('clam')
+  ACCENT='#2563eb';ACCENT_HOVER='#1d4ed8';SUCCESS='#16a34a';DANGER='#dc2626'
+  style.configure('TButton',padding=6)
+  style.configure('Accent.TButton',foreground='white',background=ACCENT,focuscolor=ACCENT)
+  style.map('Accent.TButton',background=[('active',ACCENT_HOVER),('pressed','#1e40af')])
+  style.configure('Success.TButton',foreground='white',background=SUCCESS,focuscolor=SUCCESS)
+  style.map('Success.TButton',background=[('active','#15803d'),('pressed','#166534')])
+  style.configure('Danger.TButton',foreground='white',background=DANGER,focuscolor=DANGER)
+  style.map('Danger.TButton',background=[('active','#b91c1c'),('pressed','#991b1b')])
+  style.configure('Treeview',rowheight=28,fieldbackground='#fafafa')
+  style.configure('Treeview.Heading',font=('Segoe UI',10,'bold'))
+  self.build();self.store.recover();self.refresh();self.bind_copy(root);root.bind('<Button-1>',self.clear_selection_if_empty,add='+');root.after(120,self.poll);root.after(80,lambda:center_window(root))
  def clear_selection_if_empty(self,event):
   if event.widget is self.tree:return
   if self.tree.selection():self.tree.selection_remove(*self.tree.selection())
@@ -78,7 +88,7 @@ class Application:
   ttk.Combobox(bar,textvariable=self.profile,values=list(PROFILES),state='readonly',width=11).pack(side='left');ttk.Button(bar,text='Авто',command=self.auto).pack(side='left',padx=4)
   ttk.Button(bar,text='Настройки / шаблоны',command=self.preferences).pack(side='right')
   actions=ttk.Frame(frame);actions.pack(fill='x',pady=(0,6))
-  ttk.Button(actions,text='Обработать очередь',command=self.start).pack(side='left');ttk.Button(actions,text='Стоп',command=self.stop).pack(side='left',padx=4)
+  ttk.Button(actions,text='Обработать очередь',command=self.start,style='Accent.TButton').pack(side='left');ttk.Button(actions,text='Стоп',command=self.stop).pack(side='left',padx=4)
   ttk.Button(actions,text='Группировка фото',command=self.open_photo_window).pack(side='left',padx=4)
   ttk.Button(actions,text='Повторить выбранные',command=self.retry).pack(side='left');ttk.Button(actions,text='Повторить пропуски',command=self.retry_gaps_ui).pack(side='left',padx=4);ttk.Button(actions,text='Сначала / переиндексировать',command=lambda:self.retry(True)).pack(side='left')
   ttk.Button(actions,text='Индекс этикеток',command=self.index).pack(side='left',padx=4);ttk.Button(actions,text='Экспорт',command=self.export).pack(side='right');ttk.Button(actions,text='Бэкап БД',command=self.backup).pack(side='right',padx=4)
