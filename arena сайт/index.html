@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHIRA — локальный учёт этикеток и видеоархива</title>
+<meta name="description" content="SHIRA — программа для Windows для индексации видеоархивов, распознавания этикеток с QR-кодами и штрихкодами, проверки и экспорта результатов. Работает офлайн.">
+<link rel="canonical" href="https://github.com/TgRabota25/SHIRA_MVP_2.0.0/tree/arena/253e90d9-shira-mvp-2-0-0/arena%20%D1%81%D0%B0%D0%B9%D1%82/">
+<meta property="og:title" content="SHIRA — локальный учёт этикеток и видеоархива">
+<meta property="og:description" content="Программа для Windows для индексации видео, поиска этикеток и проверки результатов. Работает офлайн.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://raw.githubusercontent.com/TgRabota25/SHIRA_MVP_2.0.0/arena/253e90d9-shira-mvp-2-0-0/arena%20%D1%81%D0%B0%D0%B9%D1%82/img/illustration-hero.png">
+<meta name="theme-color" content="#1e3a8a">
+<link rel="icon" href="img/logo-shira.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<a class="skip-link" href="#content">Перейти к основному содержимому</a>
+
+<header class="site-header" id="header">
+  <div class="container header-inner">
+    <a class="brand" href="#" aria-label="Главная">
+      <img src="img/logo-shira.png" alt="Логотип SHIRA" width="32" height="32">
+      <span>SHIRA</span>
+    </a>
+    <nav class="main-nav" id="main-nav">
+      <ul class="nav-list">
+        <li><a href="#about">О программе</a></li>
+        <li><a href="#scenarios">Сценарии</a></li>
+        <li><a href="#features">Возможности</a></li>
+        <li><a href="#interface">Интерфейс</a></li>
+        <li><a href="#start">Как начать</a></li>
+        <li><a href="#requirements">Требования</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#contact">Получение программы</a></li>
+      </ul>
+    </nav>
+    <button class="nav-toggle" id="nav-toggle" aria-controls="main-nav" aria-expanded="false" aria-label="Открыть меню">
+      <span class="nav-toggle__line"></span>
+      <span class="nav-toggle__line"></span>
+      <span class="nav-toggle__line"></span>
+    </button>
+  </div>
+</header>
+
+<main id="content">
+
+<section class="hero" id="hero">
+  <div class="container hero-inner">
+    <div class="hero-copy">
+      <span class="hero-kicker">Локальная программа для Windows</span>
+      <h1>SHIRA — учёт этикеток и видеоархива</h1>
+      <p class="hero-lead">Индексирует видео, находит этикетки с QR‑кодами и штрихкодами на кадрах, помогает проверить результаты и сохранить их в CSV/XLSX. Работает офлайн на вашем компьютере.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#contact">Получить программу</a>
+        <a class="btn btn-secondary" href="#about">Подробнее о программе</a>
+      </div>
+      <p class="hero-note">Иллюстрация concepts — не скриншот рабочей программы.</p>
+    </div>
+    <div class="hero-media">
+      <img src="img/illustration-hero.png" alt="Иллюстрация: видеокадры и этикетки" width="700" height="500" loading="lazy">
+    </div>
+  </div>
+</section>
+
+<section class="about" id="about">
+  <div class="container">
+    <h2 class="section-title">Что делает SHIRA</h2>
+    <div class="about-grid">
+      <div class="about-card">
+        <h3>Видеоархив</h3>
+        <p>Добавляйте видеофайлы в очередь. Программа равномерно выбирает кадры или индексирует их интервалами и фиксирует моменты, где обнаружены этикетки.</p>
+      </div>
+      <div class="about-card">
+        <h3>Распознавание этикеток</h3>
+        <p>Находит этикетки с QR‑кодами и штрихкодами, считывает идентификаторы (например, номера заказов) и показывает таймкод каждого появления в видео.</p>
+      </div>
+      <div class="about-card">
+        <h3>Проверка и сохранение</h3>
+        <p>Найденные идентификаторы выводятся в очередь проверки. Вы вручную подтверждаете корректный номер, после чего результат можно экспортировать в CSV или XLSX.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scenarios" id="scenarios">
+  <div class="container">
+    <h2 class="section-title">Режимы работы</h2>
+    <p class="section-lead">Программа предлагает три режима, под разные задачи. Выбирается в главном окне перед началом обработки.</p>
+    <div class="scenario-grid">
+      <div class="scenario-card">
+        <h3>Короткая сессия</h3>
+        <p><strong>Для видео короче 3600 секунд.</strong> Равномерная выборка кадров, поиск кандидатов на этикетки и ручное подтверждение в очереди проверки.</p>
+        <span class="status status-ready">Реализовано</span>
+      </div>
+      <div class="scenario-card">
+        <h3>Длительная сессия</h3>
+        <p><strong>Для видео от 3600 секунд.</strong> Интервальное индексирование, таймкоды, поиск, сводка наблюдений и извлечение отдельного кадра.</p>
+        <span class="status status-ready">Реализовано</span>
+      </div>
+      <div class="scenario-card">
+        <h3>Фото</h3>
+        <p>Группировка фотографий по служебным разделителям (A/B на заднем фоне). Неопознанные снимки уходят в парковку. Копирование и перенос с проверкой SHA‑256.</p>
+        <span class="status status-ready">Реализовано</span>
+      </div>
+    </div>
+    <p class="section-note">Все три режима доступны в текущей версии MVP 2.0.0. Результат распознавания требует ручной проверки — программа не гарантирует 100% точность.</p>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <h2 class="section-title">Возможности для пользователя</h2>
+    <div class="features-grid">
+      <div class="feature">
+        <h3>Добавление файлов</h3>
+        <p>Импортируйте видеофайлы или папку с фото. Профиль и шаг обработки сохраняются для каждого задания.</p>
+      </div>
+      <div class="feature">
+        <h3>Очередь проверки</h3>
+        <p>Найденные идентификаторы выводятся на проверку с таймкодом. Подтверждайте корректные номера или отправляйте на повторную обработку.</p>
+      </div>
+      <div class="feature">
+        <h3>Экспорт результатов</h3>
+        <p>Подтверждённые данные сохраняются в CSV или XLSX. Есть резервное копирование и импорт базы данных.</p>
+      </div>
+      <div class="feature">
+        <h3>Пакетная обработка</h3>
+        <p>Командная строка (05_BATCH.cmd) позволяет обрабатывать папки и видео без открытия главного окна.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="interface" id="interface">
+  <div class="container">
+    <h2 class="section-title">Интерфейс программы</h2>
+    <p class="section-lead">Рабочее окно SHIRA выполнено на русском языке и состоит из панели управления, таблицы заданий и окон проверки.</p>
+    <div class="interface-note">
+      <strong>О скриншотах.</strong> Реальные скриншоты интерфейса не опубликованы, так как на них видны данные клиентов: QR‑коды, номера заказов, адреса и пути к файлам. Публиковать их без очистки нельзя.
+      <br><br>Что вы увидите в программе после запуска:
+      <ul>
+        <li>комбобокс выбора режима (Короткая / Длительная / Фото);</li>
+        <li>кнопки «Добавить файлы», «Добавить папку», «Обработать очередь», «Стоп»;</li>
+        <li>таблицу задач со статусами, таймкодами и найденными номерами;</li>
+        <li>окно проверки с кадром, полем номера и кнопкой подтверждения;</li>
+        <li>окно группировки фото с предпросмотром групп и парковкой.</li>
+      </ul>
+      <p class="interface-note-hint">Чистые скриншоты интерфейса можно добавить здесь после того, как владелец подготовит их без клиентских данных.</p>
+    </div>
+  </div>
+</section>
+
+<section class="start" id="start">
+  <div class="container">
+    <h2 class="section-title">Как начать работать</h2>
+    <ol class="steps">
+      <li>
+        <h3>Получите программу</h3>
+        <p>Установочный релиз пока не оформлен как публичный релиз репозитория. Обратитесь к владельцу репозитория для получения установочного файла.</p>
+      </li>
+      <li>
+        <h3>Установите</h3>
+        <p>Запустите <code>01_INSTALL.cmd</code> — установка проходит офлайн: среда выполнения, Python 3.13.16, виртуальное окружение и ярлык на рабочем столе.</p>
+      </li>
+      <li>
+        <h3>Добавьте файлы</h3>
+        <p>Выберите режим, добавьте видеофайлы или папку с фотографиями и запустите обработку очереди.</p>
+      </li>
+      <li>
+        <h3>Проверьте и сохраните</h3>
+        <p>Подтвердите найденные номера в очереди проверки и экспортируйте результат в CSV или XLSX.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="requirements" id="requirements">
+  <div class="container">
+    <h2 class="section-title">Требования и ограничения</h2>
+    <div class="req-grid">
+      <div class="req-card">
+        <h3>Платформа</h3>
+        <p>Windows 10/11 x64. Программа работает локально, подключение к интернету не требуется.</p>
+      </div>
+      <div class="req-card">
+        <h3>Что не подтверждено</h3>
+        <p>Выполнение на целевой Windows и работа с реальным 8‑часовым видео пользователя в этой сборке не проверялись. Точность распознавания на реальных материалах не измеряется.</p>
+      </div>
+      <div class="req-card">
+        <h3>Важно</h3>
+        <p>Программа не гарантирует 100% распознавание, не распознаёт размытые или за閉анные этикетки без ошибок, и не является сертифицированной отказоустойчивой системой. Результаты требуют ручной проверки.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq" id="faq">
+  <div class="container">
+    <h2 class="section-title">Частые вопросы</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">Для кого предназначена SHIRA?</button>
+        <div class="faq-answer" hidden>Для предприятий, складов и служб упаковки, где нужно соотносить видеозаписи с этикетками товаров и находить конкретные идентификаторы по таймкодам.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">Нужен ли интернет?</button>
+        <div class="faq-answer" hidden>Нет. Программа работает полностью офлайн на локальном компьютере.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">Есть ли веб‑версия?</button>
+        <div class="faq-answer" hidden>Нет. Это desktop‑программа для Windows. Этот сайт только представляет продукт.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-question" aria-expanded="false">Где скачать?</button>
+        <div class="faq-answer" hidden>Публичный релиз для скачивания пока не опубликован. Обратитесь к владельцу репозитория SHIRA_MVP_2.0.0 для получения установочного файла.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="contact" id="contact">
+  <div class="container">
+    <h2 class="section-title">Получение программы</h2>
+    <div class="contact-inner">
+      <div class="contact-copy">
+        <h3>Свяжитесь с владельцем</h3>
+        <p>Прямая ссылка на скачивание и контактные данные владельца ещё не предоставлены. Чтобы получить установочный файл SHIRA MVP 2.0.0, свяжитесь с владельцем репозитория на GitHub.</p>
+        <p class="contact-note">Как только владелец предоставит ссылку на релиз и контакты, они будут размещены здесь.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <img src="img/logo-shira.png" alt="Логотип SHIRA" width="24" height="24">
+      <span>SHIRA</span>
+    </div>
+    <p class="footer-copy">Презентационный сайт программы SHIRA MVP 2.0.0. Сайт не является браузерной версией программы и не обрабатывает файлы пользователей.</p>
+    <nav class="footer-nav">
+      <a href="#about">О программе</a>
+      <a href="#requirements">Требования</a>
+      <a href="#contact">Получение программы</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
