@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "target": "Windows 10/11 x64",
+  "offline_dependencies_included": true,
+  "automated_tests": 66,
+  "test_platform": "Linux Python 3.13.16 Tesseract 5.3.0",
+  "windows_tesseract": "5.5.0",
+  "windows_execution_tested": false,
+  "real_8_hour_video_load_tested": false,
+  "artificial_9_hour_container_timestamp_tested": true,
+  "real_user_video_accuracy_measured": false,
+  "tests_total": 81,
+  "tests_pass_linux_sandbox": 75,
+  "tests_environmental_linux_sandbox": 6,
+  "photo_tests": 14,
+  "classify_mode_boundary_cases": [3599, 3599.999, 3600, 3601, null]
+}

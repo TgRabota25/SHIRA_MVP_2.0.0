@@ -1,0 +1,73 @@
+test_changed_long_source_is_error_not_many_skips (test_mvp.IntegrationTests.test_changed_long_source_is_error_not_many_skips) ... ok
+test_corrupt_file_does_not_stop_queue (test_mvp.IntegrationTests.test_corrupt_file_does_not_stop_queue) ... [mov,mp4,m4a,3gp,3g2,mj2 @ 0x30c7c280] moov atom not found
+[mov,mp4,m4a,3gp,3g2,mj2 @ 0x1a0d7ec0] moov atom not found
+ok
+test_deadline (test_mvp.IntegrationTests.test_deadline) ... ok
+test_long_chunk_resume_real_video (test_mvp.IntegrationTests.test_long_chunk_resume_real_video) ... ok
+test_real_ocr (test_mvp.IntegrationTests.test_real_ocr) ... ok
+test_real_qr (test_mvp.IntegrationTests.test_real_qr) ... ok
+test_rotated_service_label (test_mvp.IntegrationTests.test_rotated_service_label) ... ok
+test_service_qr_near_text (test_mvp.IntegrationTests.test_service_qr_near_text) ... ok
+test_spawn_engine (test_mvp.IntegrationTests.test_spawn_engine) ... ok
+test_stop_resume (test_mvp.IntegrationTests.test_stop_resume) ... ok
+test_timestamp_beyond_8_hours_real_container (test_mvp.IntegrationTests.test_timestamp_beyond_8_hours_real_container) ... ok
+test_arbitrary_phone_rejected (test_mvp.RecognitionTests.test_arbitrary_phone_rejected) ... ok
+test_atomic_settings (test_mvp.RecognitionTests.test_atomic_settings) ... ok
+test_auto (test_mvp.RecognitionTests.test_auto) ... ok
+test_changed_source (test_mvp.RecognitionTests.test_changed_source) ... ok
+test_conflict_review (test_mvp.RecognitionTests.test_conflict_review) ... ok
+test_custom (test_mvp.RecognitionTests.test_custom) ... ok
+test_invalid_regex (test_mvp.RecognitionTests.test_invalid_regex) ... ok
+test_legacy_space_pattern (test_mvp.RecognitionTests.test_legacy_space_pattern) ... ok
+test_legacy_yandex_soft (test_mvp.RecognitionTests.test_legacy_yandex_soft) ... ok
+test_old_ozon (test_mvp.RecognitionTests.test_old_ozon) ... ok
+test_ozon_new (test_mvp.RecognitionTests.test_ozon_new) ... ok
+test_qr_order_not_global_phone (test_mvp.RecognitionTests.test_qr_order_not_global_phone) ... ok
+test_requested_template (test_mvp.RecognitionTests.test_requested_template) ... ok
+test_single_ocr_review (test_mvp.RecognitionTests.test_single_ocr_review) ... ok
+test_timestamp_8_hours (test_mvp.RecognitionTests.test_timestamp_8_hours) ... ok
+test_two_frames_done (test_mvp.RecognitionTests.test_two_frames_done) ... ok
+test_two_rotations_same_frame_not_consensus (test_mvp.RecognitionTests.test_two_rotations_same_frame_not_consensus) ... ok
+test_unknown_qr_review (test_mvp.RecognitionTests.test_unknown_qr_review) ... ok
+test_weak_qr_requires_review (test_mvp.RecognitionTests.test_weak_qr_requires_review) ... ok
+test_yandex (test_mvp.RecognitionTests.test_yandex) ... ok
+test_atomic_rollback (test_mvp.StoreTests.test_atomic_rollback) ... ok
+test_backup (test_mvp.StoreTests.test_backup) ... ok
+test_backup_same (test_mvp.StoreTests.test_backup_same) ... ok
+test_bad_extension (test_mvp.StoreTests.test_bad_extension) ... ok
+test_bulk_retry (test_mvp.StoreTests.test_bulk_retry) ... ok
+test_claim_once (test_mvp.StoreTests.test_claim_once) ... ok
+test_confirm_audit (test_mvp.StoreTests.test_confirm_audit) ... ok
+test_confirm_hit (test_mvp.StoreTests.test_confirm_hit) ... ok
+test_csv_formula (test_mvp.StoreTests.test_csv_formula) ... ok
+test_cursor_monotonic (test_mvp.StoreTests.test_cursor_monotonic) ... ok
+test_duplicate (test_mvp.StoreTests.test_duplicate) ... ok
+test_empty_long_not_found (test_mvp.StoreTests.test_empty_long_not_found) ... ok
+test_empty_rejected (test_mvp.StoreTests.test_empty_rejected) ... ok
+test_failure_retried (test_mvp.StoreTests.test_failure_retried) ... ok
+test_gap_marks_partial (test_mvp.StoreTests.test_gap_marks_partial) ... ok
+test_hit_sort (test_mvp.StoreTests.test_hit_sort) ... ok
+test_idempotent_hit (test_mvp.StoreTests.test_idempotent_hit) ... ok
+test_legacy_import_read_only (test_mvp.StoreTests.test_legacy_import_read_only) ... ok
+test_literal_search (test_mvp.StoreTests.test_literal_search) ... ok
+test_long_failed_segment_visible_gap (test_mvp.StoreTests.test_long_failed_segment_visible_gap) ... ok
+test_pagination (test_mvp.StoreTests.test_pagination) ... ok
+test_recovery (test_mvp.StoreTests.test_recovery) ... ok
+test_reset_clears_index (test_mvp.StoreTests.test_reset_clears_index) ... ok
+test_resume_keeps_index (test_mvp.StoreTests.test_resume_keeps_index) ... ok
+test_running_not_editable (test_mvp.StoreTests.test_running_not_editable) ... ok
+test_same_basename_separate (test_mvp.StoreTests.test_same_basename_separate) ... ok
+test_search_hits (test_mvp.StoreTests.test_search_hits) ... ok
+test_separate_sessions (test_mvp.StoreTests.test_separate_sessions) ... ok
+test_short_export_uses_manual_number (test_mvp.StoreTests.test_short_export_uses_manual_number) ... ok
+test_single_instance (test_mvp.StoreTests.test_single_instance) ... ok
+test_sort (test_mvp.StoreTests.test_sort) ... ok
+test_sort_hit_count (test_mvp.StoreTests.test_sort_hit_count) ... ok
+test_sort_injection_whitelisted (test_mvp.StoreTests.test_sort_injection_whitelisted) ... ok
+test_summary_times (test_mvp.StoreTests.test_summary_times) ... ok
+test_xlsx (test_mvp.StoreTests.test_xlsx) ... ok
+
+----------------------------------------------------------------------
+Ran 66 tests in 6.258s
+
+OK
