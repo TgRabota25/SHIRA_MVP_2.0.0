@@ -1,0 +1,38 @@
+[
+  {
+    "path": "vendor/python-3.13.16-amd64.exe",
+    "url": "https://www.python.org/ftp/python/3.13.16/python-3.13.16-amd64.exe",
+    "size": 29935584,
+    "sha256": "fb4f9f5d438b2396da0086dc70b935c530cb578e37adc6d354f7ad2037fee83b"
+  },
+  {
+    "path": "licenses/python-installer.sigstore.json",
+    "url": "https://www.python.org/ftp/python/3.13.16/python-3.13.16-amd64.exe.sigstore",
+    "size": 7360,
+    "sha256": "5924e0951be365ffef494a7ee646baa81eab6a930070eb35903140c5198f315c"
+  },
+  {
+    "path": "vendor/vc_redist.x64.exe",
+    "url": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+    "size": 25635768,
+    "sha256": "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b"
+  },
+  {
+    "path": "app/tesseract/tessdata/eng.traineddata",
+    "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata",
+    "size": 4113088,
+    "sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+  },
+  {
+    "path": "app/tesseract/tessdata/rus.traineddata",
+    "url": "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/rus.traineddata",
+    "size": 3861738,
+    "sha256": "e16e5e036cce1d9ec2b00063cf8b54472625b9e14d893a169e2b0dedeb4df225"
+  },
+  {
+    "path": "vendor/tesseract-original-installer.exe",
+    "url": "https://github.com/tesseract-ocr/tesseract/releases/download/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe",
+    "sha256": "f3fc4236425b690c8be756f35793f77394ee004be0a6460a440c754d892f68bc",
+    "size": 21381872
+  }
+]

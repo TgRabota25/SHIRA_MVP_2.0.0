@@ -1,0 +1,570 @@
+{
+  "source_commit": "092a550fdcc8f19a838fa293b45c1689c6b59cfa",
+  "source_directory": "SHIRA_MVP_2.0.0-main",
+  "files": [
+    {
+      "path": "source/.gitattributes",
+      "original_path": "SHIRA_MVP_2.0.0-main/.gitattributes",
+      "bytes": 66,
+      "sha256": "1a1dbe176bc233b499d35a57db7513f2941c99ab9759f177830c9149be99005b"
+    },
+    {
+      "path": "source/.gitignore",
+      "original_path": "SHIRA_MVP_2.0.0-main/.gitignore",
+      "bytes": 66,
+      "sha256": "9973c52ef9b5ea8c581b1dc86806747f4b8ef65e0ac8f33467b1d80eca37b2ad"
+    },
+    {
+      "path": "source/01_INSTALL.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/01_INSTALL.cmd",
+      "bytes": 118,
+      "sha256": "6787c7f171a317746734ef8110fff1423803ba095ff2c9c929498220d87c06d4"
+    },
+    {
+      "path": "source/02_START.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/02_START.cmd",
+      "bytes": 231,
+      "sha256": "423437562f1ab788c76628dd2c1489c5a08e286869b1aa82154ef5605703294b"
+    },
+    {
+      "path": "source/03_DIAGNOSTICS.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/03_DIAGNOSTICS.cmd",
+      "bytes": 113,
+      "sha256": "c7f8fc5afd1e7e9e7da13bfb0f1107f7b799061327ca112901d53ec3241fecf2"
+    },
+    {
+      "path": "source/04_TESTS.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/04_TESTS.cmd",
+      "bytes": 123,
+      "sha256": "c7fb5f171b38ba951b8ed0b295309bf44fd83b313987394eda9066ecd159c9e3"
+    },
+    {
+      "path": "source/05_BATCH.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/05_BATCH.cmd",
+      "bytes": 126,
+      "sha256": "6b490ee1b0a3092429ca19495338ead33f5296aedfa9db2234114df22bdefe48"
+    },
+    {
+      "path": "source/06_VERIFY.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/06_VERIFY.cmd",
+      "bytes": 119,
+      "sha256": "bf088661cf4e81c0deb8bebb284f09f6bb35a840084d4aa447910b80e1be11e0"
+    },
+    {
+      "path": "source/07_TRACK_LIBRARY.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/07_TRACK_LIBRARY.cmd",
+      "bytes": 115,
+      "sha256": "a5fdc0e0f773adc76400e71e72932d1e79636a8aef0e37a3d212d65f774a2d51"
+    },
+    {
+      "path": "source/08_START_PREMIUM.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/08_START_PREMIUM.cmd",
+      "bytes": 339,
+      "sha256": "5c0d36c67b15cb012bfdeb41ea56f17166bf5ef44cbf1ee217dc6762a4530221"
+    },
+    {
+      "path": "source/09_START_STANDARD_DIAGNOSTIC.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/09_START_STANDARD_DIAGNOSTIC.cmd",
+      "bytes": 61,
+      "sha256": "59f30d65518950bf6903d8198c48115e84a653f222f3cb3876dfb0a5499e9abd"
+    },
+    {
+      "path": "source/10_START_PREMIUM_LAYOUT.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/10_START_PREMIUM_LAYOUT.cmd",
+      "bytes": 365,
+      "sha256": "809a0c9f7879167023cc3e67dd2b9be9c136f7b7f99151d528b8c2e3d1976cb1"
+    },
+    {
+      "path": "source/11_START_PREMIUM_TITLEBAR.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/11_START_PREMIUM_TITLEBAR.cmd",
+      "bytes": 348,
+      "sha256": "1ec8e1350ba3c0518b5781f9be785975639051fd1dde439e0aacf9d04faf7a4a"
+    },
+    {
+      "path": "source/12_START_PREMIUM_COMPACT.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/12_START_PREMIUM_COMPACT.cmd",
+      "bytes": 347,
+      "sha256": "5989f8576669f8eb198d4780f8077d34afa66f3fdb843b2e91ec28f7776ce33f"
+    },
+    {
+      "path": "source/13_START_PREMIUM_WINDOWS.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/13_START_PREMIUM_WINDOWS.cmd",
+      "bytes": 345,
+      "sha256": "5c9f7891e7b21e14d35c9d5d9198afba921e8ff60bc0a9905de61d2c17ca13cb"
+    },
+    {
+      "path": "source/FIX_NO_CENTERING.cmd",
+      "original_path": "SHIRA_MVP_2.0.0-main/FIX_NO_CENTERING.cmd",
+      "bytes": 222,
+      "sha256": "8f22968f337ecfd24310d6e47e96bec719d645b021a826f9be46357960c632c2"
+    },
+    {
+      "path": "source/README_COMPACT_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_COMPACT_RU.txt",
+      "bytes": 1557,
+      "sha256": "3266d50a2e4b96d941687abbeb64d1520cc51ba7fdad8adbe8bae8ddd7304e60"
+    },
+    {
+      "path": "source/README_CONTENT_FIT_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_CONTENT_FIT_RU.txt",
+      "bytes": 1935,
+      "sha256": "7b500c9280253e1e4008327068d110c9fcb142cd8a98f7f6c270b75fdd34c89a"
+    },
+    {
+      "path": "source/README_LAYOUT_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_LAYOUT_RU.txt",
+      "bytes": 1810,
+      "sha256": "51ff5ac824df05a6e507b401949ccda10f3f5c82b934c677ddbb9c5b28c553bc"
+    },
+    {
+      "path": "source/README_NO_CENTERING_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_NO_CENTERING_RU.txt",
+      "bytes": 1737,
+      "sha256": "e0d4f52a5a00ebf408032963a6cd3bd99fc29d61daef75eb120416f43ade186c"
+    },
+    {
+      "path": "source/README_PREMIUM_RESPONSIVE.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_PREMIUM_RESPONSIVE.txt",
+      "bytes": 1473,
+      "sha256": "ee3462a86dfade4eea2d4fc4d2ea544801ce62db36cd9cb552bbc53f4b393b54"
+    },
+    {
+      "path": "source/README_PREMIUM_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_PREMIUM_RU.txt",
+      "bytes": 2687,
+      "sha256": "ee52c7d8f540b047959cee17cc2530419ae475ad174f367d602be8a57b82d27c"
+    },
+    {
+      "path": "source/README_RU.md",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_RU.md",
+      "bytes": 22275,
+      "sha256": "96bba1977fee896d5eda092f9182e9141e75c2abfa496f8ffde9c8b478707d2b"
+    },
+    {
+      "path": "source/README_SAFE_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_SAFE_RU.txt",
+      "bytes": 1701,
+      "sha256": "ba480076e2acc268c49663732c3bfcfb959e4f50282afd60eced291a866920d4"
+    },
+    {
+      "path": "source/README_TACTILE_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_TACTILE_RU.txt",
+      "bytes": 1935,
+      "sha256": "a8977cb1e1afdcc93e227d6e2717d16de06f8a242acbc9a4b04f9337547c7ddb"
+    },
+    {
+      "path": "source/README_TITLEBAR_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_TITLEBAR_RU.txt",
+      "bytes": 1590,
+      "sha256": "2fa0644a022d04a9bc80038be087f28a4a845978d4e26e7883d60d1e88ac549d"
+    },
+    {
+      "path": "source/README_WINDOWS_RU.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/README_WINDOWS_RU.txt",
+      "bytes": 2294,
+      "sha256": "7da001c965a5d715388068c0cda039fab37505eda00e5941dcfd10997f60665d"
+    },
+    {
+      "path": "source/app/archive_delete.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/archive_delete.py",
+      "bytes": 8892,
+      "sha256": "d239cc57770a77150d10a7739180c77f780cb13ddef41f225a01caac30e6f1ed"
+    },
+    {
+      "path": "source/app/cli.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/cli.py",
+      "bytes": 2571,
+      "sha256": "d678d609bbe3c5515e19a0ad1bfc5ab200253b7de615cf706d5ff27faeb3979b"
+    },
+    {
+      "path": "source/app/config.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/config.py",
+      "bytes": 5516,
+      "sha256": "d74346c6d06b66d0bd2b64b05ded7c2e9d1f6b5e9e586888d06876c664336a11"
+    },
+    {
+      "path": "source/app/engine.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/engine.py",
+      "bytes": 5863,
+      "sha256": "2063caa2382b84fa8c03efe1ec317b3260a84d3e913eef7cbfbaa4910411addd"
+    },
+    {
+      "path": "source/app/imageview.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/imageview.py",
+      "bytes": 1875,
+      "sha256": "11ae8e0cb995ead42a6d5fe6fd6cf585c7211080c79ed83358350131edafca79"
+    },
+    {
+      "path": "source/app/legacy_import.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/legacy_import.py",
+      "bytes": 2903,
+      "sha256": "f6cc2b4a0bb23d5067c63247ceb227bae7c63ab97ec3871375e4d0de3de02a24"
+    },
+    {
+      "path": "source/app/main.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/main.py",
+      "bytes": 44190,
+      "sha256": "40da101f0ddf8bb7fbde605329e4d980d848f10949327a73157b86ac5994815a"
+    },
+    {
+      "path": "source/app/main_patched.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/main_patched.py",
+      "bytes": 45540,
+      "sha256": "b60c7c600a4fd4d32045fa2a373e329c982c6d35c5e95740d8ed63634574af65"
+    },
+    {
+      "path": "source/app/patch_manifest.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/patch_manifest.json",
+      "bytes": 54548,
+      "sha256": "1b0292c7aa6986e8d4f67ebb8412b82e7a55a6df6896fe99e818c09bd1709fb3"
+    },
+    {
+      "path": "source/app/platform_ui.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/platform_ui.py",
+      "bytes": 2620,
+      "sha256": "ea2011b530bda55674214f0a6c5cac14faee8f146623bf9d8eb3bd628d395365"
+    },
+    {
+      "path": "source/app/premium_compact.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/premium_compact.py",
+      "bytes": 4483,
+      "sha256": "fe638946f7c1f68f2bf24001fe002343db966eef1c45fdb6905926a2b32a0504"
+    },
+    {
+      "path": "source/app/premium_consistent.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/premium_consistent.py",
+      "bytes": 3730,
+      "sha256": "1200dc506ab84b1965b2eb6dc7cd7c59a319c5930b4d0780db27985839df2339"
+    },
+    {
+      "path": "source/app/premium_layout.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/premium_layout.py",
+      "bytes": 2996,
+      "sha256": "bb96a873b907f081de83c11f7488305435f260aec7eef3a6044a7ada5c38e7dc"
+    },
+    {
+      "path": "source/app/premium_titlebar.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/premium_titlebar.py",
+      "bytes": 2266,
+      "sha256": "890731874d9e9e7784530737d77dc0bd3b604a03e9a8e569c54e52fa30f75583"
+    },
+    {
+      "path": "source/app/premium_ui.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/premium_ui.py",
+      "bytes": 7067,
+      "sha256": "60e78dabab57e730f90498ff65d8d8ba49959fc857733c247da2701f518f93e8"
+    },
+    {
+      "path": "source/app/premium_windows.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/premium_windows.py",
+      "bytes": 2691,
+      "sha256": "f8e010b5adacd3c32075c097291103578d4ac96f27353d98acffc8f089b68b9a"
+    },
+    {
+      "path": "source/app/recognition.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/recognition.py",
+      "bytes": 35055,
+      "sha256": "9342aa674f1f96ee3d4789a00d8d689f85466fd7d8369836e0aebff6a042cbbc"
+    },
+    {
+      "path": "source/app/storage.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/storage.py",
+      "bytes": 17256,
+      "sha256": "63fb32d5f9b0efb88e9023fe5b10dec1b3b461f0787c2c7051983ca4f32a3839"
+    },
+    {
+      "path": "source/app/studio_ui.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/studio_ui.py",
+      "bytes": 8244,
+      "sha256": "6609f4ce2b36171cbb0e20deaff324f6891d6e413435279d60616faf9e95f239"
+    },
+    {
+      "path": "source/app/studio_ui_patched.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/studio_ui_patched.py",
+      "bytes": 8294,
+      "sha256": "e64328fce82d1b617cf6ce124510333643b4473e3bdca8dc9469a0c47ce17a8f"
+    },
+    {
+      "path": "source/app/ui_patch.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/ui_patch.py",
+      "bytes": 2104,
+      "sha256": "6340bb799acbc6fd83f0f1758890a1c553d62eb57cd6e3fb0d163344626b600c"
+    },
+    {
+      "path": "source/app/windows_job.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/app/windows_job.py",
+      "bytes": 2364,
+      "sha256": "7f91926df11354ec113aee50cf9980b573bfa32137c73e707db86b772d182efe"
+    },
+    {
+      "path": "source/docs/CHANGES_RU.md",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/CHANGES_RU.md",
+      "bytes": 5840,
+      "sha256": "475fd4592065b085b70b240baeb3ef796d1d3c350fc9e8d4517af7cd4c6f3807"
+    },
+    {
+      "path": "source/docs/DB_UPGRADE_RU.md",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/DB_UPGRADE_RU.md",
+      "bytes": 440,
+      "sha256": "f85d89859fa9fdbd4df7c44298ba5bbdbc0c2864079d1481c5a3278a85102f49"
+    },
+    {
+      "path": "source/docs/cli-test.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/cli-test.txt",
+      "bytes": 1177,
+      "sha256": "279091fd38bda6357d4b1a249b31a3f6285010686edf8134bc6153176b707ae7"
+    },
+    {
+      "path": "source/docs/components.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/components.json",
+      "bytes": 1523,
+      "sha256": "9dbe01aefdcc1bee95c04a6d48f46348d67b7d902d6e85a85cf18d4bec18a8de"
+    },
+    {
+      "path": "source/docs/dependencies.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/dependencies.json",
+      "bytes": 1379,
+      "sha256": "8a0d5e762f7187c5d37ca3ade5dccd19c67fd815b5261635ebf59605f77f1225"
+    },
+    {
+      "path": "source/docs/diagnostics-linux.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/diagnostics-linux.json",
+      "bytes": 1067,
+      "sha256": "4a33323dd32396308a5dc6fd012000cd5c92670b53fe1f728d410c1d33d28550"
+    },
+    {
+      "path": "source/docs/gui-test.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/gui-test.txt",
+      "bytes": 306,
+      "sha256": "687f51e54da86c30feea6f53880db5d75456e3a18a01fafee96c31f17c20f89e"
+    },
+    {
+      "path": "source/docs/release-status.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/release-status.json",
+      "bytes": 395,
+      "sha256": "e7fdf76ce4e30ea0c8b98c841a14501351d28043d581113b8c0e8c7327e2edfd"
+    },
+    {
+      "path": "source/docs/test-results.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/test-results.txt",
+      "bytes": 5233,
+      "sha256": "77d1d734913aac45e1d0b00b90b75424a14ed7e74580ff6d43d7acae685e8b30"
+    },
+    {
+      "path": "source/docs/windows-dependencies.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/windows-dependencies.txt",
+      "bytes": 1199,
+      "sha256": "e4c15ce02c8c1204b8a37af5086f585ea924aa52f13d7ead6a45243d9097e19c"
+    },
+    {
+      "path": "source/docs/windows-dll-imports.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/windows-dll-imports.json",
+      "bytes": 8708,
+      "sha256": "4ba582d5007a5ee9997a7ae691c48ce7ba9aaa8e77feb057da5645f069dca2dc"
+    },
+    {
+      "path": "source/docs/windows-pe-check.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/docs/windows-pe-check.json",
+      "bytes": 2670,
+      "sha256": "e2f8a3f01000031994bed9ab485e6e310ba3e30dd8cc652015615be3aa2bf214"
+    },
+    {
+      "path": "source/examples/README.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/examples/README.txt",
+      "bytes": 783,
+      "sha256": "6c1c483b5ca9d805a817b9e8a0fe406111a49f7c9ae6175bc866622ee07697a4"
+    },
+    {
+      "path": "source/licenses/Apache-2.0.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/Apache-2.0.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "source/licenses/Python-LICENSE.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/Python-LICENSE.txt",
+      "bytes": 13809,
+      "sha256": "78b12c3a81360b357002334f0e70ea0e92eebf7a9b358805c03c48484945f3bb"
+    },
+    {
+      "path": "source/licenses/THIRD_PARTY_RU.md",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/THIRD_PARTY_RU.md",
+      "bytes": 2970,
+      "sha256": "e6e1b2ce0b34390142de855b1f8f84ddb7de76c70ad1d9db305a60f92eae1a37"
+    },
+    {
+      "path": "source/licenses/Tesseract-LICENSE.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/Tesseract-LICENSE.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "source/licenses/et_xmlfile/PACKAGE-METADATA.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/et_xmlfile/PACKAGE-METADATA.txt",
+      "bytes": 2711,
+      "sha256": "0e97d7ea909ed0fbe03d88bc8b6f58677cee1b07bd3353ce361cd2405915204e"
+    },
+    {
+      "path": "source/licenses/numpy/LICENSE.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/numpy/LICENSE.txt",
+      "bytes": 46762,
+      "sha256": "b556febd22dbcb7e23d874ff6191041bffb37a76860a60a5b817644c18d368ff"
+    },
+    {
+      "path": "source/licenses/numpy/PACKAGE-METADATA.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/numpy/PACKAGE-METADATA.txt",
+      "bytes": 60844,
+      "sha256": "229f3544b02805e0f6a12030e155d8a45fd3a4100b3291574175e6a76f20e1e1"
+    },
+    {
+      "path": "source/licenses/opencv-python-headless/LICENSE-3RD-PARTY.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/opencv-python-headless/LICENSE-3RD-PARTY.txt",
+      "bytes": 152360,
+      "sha256": "4fc3c113d53e95da0f3c433655a67067b7310e53af31eb6d280e94cc6927a363"
+    },
+    {
+      "path": "source/licenses/opencv-python-headless/LICENSE.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/opencv-python-headless/LICENSE.txt",
+      "bytes": 1070,
+      "sha256": "09d719058e782ac7bc71ba21c944e1136cde2bb957c0e888121f0218d6b5f02c"
+    },
+    {
+      "path": "source/licenses/opencv_python_headless/PACKAGE-METADATA.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/opencv_python_headless/PACKAGE-METADATA.txt",
+      "bytes": 20300,
+      "sha256": "33b8bffb26546642a9e96d317d6e0776f041939c7c695a8ac39e566822af08f3"
+    },
+    {
+      "path": "source/licenses/openpyxl/PACKAGE-METADATA.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/openpyxl/PACKAGE-METADATA.txt",
+      "bytes": 2510,
+      "sha256": "23f80ca9830dd89435da1710f26deda8f81e5409287e74540210c72627a4ad96"
+    },
+    {
+      "path": "source/licenses/pillow/PACKAGE-METADATA.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/pillow/PACKAGE-METADATA.txt",
+      "bytes": 9023,
+      "sha256": "d53d4d78f8a8efe182396711ef76840386d2ba4ccdad421f58cc00c3b3401f73"
+    },
+    {
+      "path": "source/licenses/psutil/PACKAGE-METADATA.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/psutil/PACKAGE-METADATA.txt",
+      "bytes": 22585,
+      "sha256": "9e999b5107b9ce820d496578b7b8888babe7a5301496e34b6c95e8378d70f47d"
+    },
+    {
+      "path": "source/licenses/python-installer.sigstore.json",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/python-installer.sigstore.json",
+      "bytes": 7360,
+      "sha256": "5924e0951be365ffef494a7ee646baa81eab6a930070eb35903140c5198f315c"
+    },
+    {
+      "path": "source/licenses/tesseract-distribution/README.md",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/tesseract-distribution/README.md",
+      "bytes": 8142,
+      "sha256": "8970df9cdfe0e497930f7da0a1ba4f46a8dc6e9dc69869294ce82374a940a21f"
+    },
+    {
+      "path": "source/licenses/zxing_cpp/PACKAGE-METADATA.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/licenses/zxing_cpp/PACKAGE-METADATA.txt",
+      "bytes": 2232,
+      "sha256": "9910d11ff052e8e9d990be4a72fe2945da106c2bee6a28b2dff8630b5f580e7c"
+    },
+    {
+      "path": "source/requirements-windows-lock.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/requirements-windows-lock.txt",
+      "bytes": 680,
+      "sha256": "fb687cb29d9dfdc20a83ef0af54a5e963c2601640c5b91694c1975b58fbdf8dd"
+    },
+    {
+      "path": "source/requirements.txt",
+      "original_path": "SHIRA_MVP_2.0.0-main/requirements.txt",
+      "bytes": 109,
+      "sha256": "a3b7f2924752ba0847c232750acfc5df2f89adde4ca0961bbaa4a49857493a3f"
+    },
+    {
+      "path": "source/tests/test_mvp.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tests/test_mvp.py",
+      "bytes": 15148,
+      "sha256": "c51a14121c64fb2fc45fae20c58b7256dec47b1db17e23b6874245a4bcb906e5"
+    },
+    {
+      "path": "source/tools/doctor.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/doctor.py",
+      "bytes": 3629,
+      "sha256": "e3588fb323c163a95a68f114c394ce48e304a79c60d4189226317e3568a583d7"
+    },
+    {
+      "path": "source/tools/fix_no_centering.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/fix_no_centering.py",
+      "bytes": 1372,
+      "sha256": "095ae9ad7d2e4ac7e46661490fac702dff27d9ddb5dbb0388415795b07118ee6"
+    },
+    {
+      "path": "source/tools/frame_preview.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/frame_preview.py",
+      "bytes": 752,
+      "sha256": "8051179d3fd7c63c1f4e7d39225c0deb6e4cd69c96a500557d9575726a39c5bc"
+    },
+    {
+      "path": "source/tools/launch.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/launch.py",
+      "bytes": 1294,
+      "sha256": "fb8c82eecb1ba06ff56d5a3aaa935b56ff16161317274f9c438a6f48665c7e80"
+    },
+    {
+      "path": "source/tools/launch_premium.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/launch_premium.py",
+      "bytes": 769,
+      "sha256": "0ac1fed04ff71670e10d40174209f0260aa78cb6bcfa6649e9a01a0deac6adaf"
+    },
+    {
+      "path": "source/tools/launch_premium_compact.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/launch_premium_compact.py",
+      "bytes": 987,
+      "sha256": "d3ffa92bf4a834fef21648f5f6f877f969033ee727558276744bf8f14d66dabe"
+    },
+    {
+      "path": "source/tools/launch_premium_layout.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/launch_premium_layout.py",
+      "bytes": 743,
+      "sha256": "0bc725f9ef8a7895c7fda63b09e0732bad5c556fbd90e8955d448ec28004d23b"
+    },
+    {
+      "path": "source/tools/launch_premium_titlebar.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/launch_premium_titlebar.py",
+      "bytes": 850,
+      "sha256": "d2942177566adf905b4702f0743da1f13afc957e96827d754c82a68e5683bff8"
+    },
+    {
+      "path": "source/tools/launch_premium_windows.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/launch_premium_windows.py",
+      "bytes": 984,
+      "sha256": "b6ede10d9a153db8b8577b433c66c10414142cd2aaaf55e10a2854db5e5585d4"
+    },
+    {
+      "path": "source/tools/make_checksums.ps1",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/make_checksums.ps1",
+      "bytes": 1399,
+      "sha256": "86edf37ee9ccbfd709a3bc99dd2259e16d0c1070077c20a4834e8a751cc296a6"
+    },
+    {
+      "path": "source/tools/make_icon.py",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/make_icon.py",
+      "bytes": 1584,
+      "sha256": "9e1537dbda31f5876ff3e7cb29e7411b05543383e0232101bf58b104ee2b17f9"
+    },
+    {
+      "path": "source/tools/setup.ps1",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/setup.ps1",
+      "bytes": 4849,
+      "sha256": "cbbabc2d6489693e4a5ccc6c6d91379e9e4fd50f5bdbcd0ddbf4520362e74152"
+    },
+    {
+      "path": "source/tools/verify.ps1",
+      "original_path": "SHIRA_MVP_2.0.0-main/tools/verify.ps1",
+      "bytes": 1716,
+      "sha256": "8d02f51f54f09dd8a32ea48f4991dd398edd6ec7693155b22fd955b7e7b4721a"
+    }
+  ]
+}
