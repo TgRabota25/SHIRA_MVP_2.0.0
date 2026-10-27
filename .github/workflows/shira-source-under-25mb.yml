@@ -1,0 +1,80 @@
+name: Export SHIRA source under 25 MB
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/shira-source-under-25mb.yml']
+permissions:
+  contents: write
+concurrency:
+  group: shira-source-export
+  cancel-in-progress: false
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build source-only folder and UTF-8 text bundle
+        shell: python
+        run: |
+          import pathlib, subprocess, json, hashlib, codecs
+          root = pathlib.Path('.')
+          src = pathlib.Path('SHIRA_MVP_2.0.0-main')
+          dst = pathlib.Path('AI_SOURCE_UNDER_25MB')
+          if not src.is_dir():
+              raise SystemExit('Expected source directory is missing; no export created.')
+          if dst.exists():
+              raise SystemExit('Destination already exists; refusing to overwrite it.')
+          commit = subprocess.check_output(['git','rev-parse','HEAD'], text=True).strip()
+          tracked = subprocess.check_output(['git','ls-files','-z','--',str(src)]).decode('utf-8').split('\0')
+          allowed = {'.py','.md','.txt','.cmd','.bat','.ps1','.json','.yml','.yaml','.toml','.ini','.cfg','.spec','.iss','.css','.html','.js','.xml','.csv'}
+          records = []
+          payload = {}
+          bundle = ['SHIRA SOURCE CODE EXPORT\nSource commit: '+commit+'\nBinary dependencies and media are excluded. This is not a complete runtime distribution.\n']
+          for name in sorted(filter(None, tracked)):
+              p = pathlib.Path(name)
+              rel = p.relative_to(src)
+              if p.is_symlink() or not p.is_file():
+                  continue
+              if any(x.lower() in {'tesseract','vendor','wheels','.venv','venv','__pycache__','original'} for x in rel.parts):
+                  continue
+              if p.suffix.lower() not in allowed and p.name not in {'.gitignore','.gitattributes'}:
+                  continue
+              if p.name.lower().endswith('_b64.txt') or p.name in {'SHA256SUMS.txt','PREMIUM_SHA256SUMS.txt'}:
+                  continue
+              data = p.read_bytes()
+              if b'\0' in data:
+                  continue
+              try:
+                  text = data.decode('utf-8-sig')
+              except UnicodeDecodeError:
+                  raise SystemExit('Non-UTF-8 file requires manual review: '+name)
+              target = 'source/'+rel.as_posix()
+              payload[target] = data
+              records.append({'path':target,'original_path':name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+              bundle.append('\n'+'='*72+'\nFILE: '+rel.as_posix()+'\n'+'='*72+'\n'+text+'\nEND FILE: '+rel.as_posix()+'\n')
+          if not records or not any(r['path']=='source/app/main.py' for r in records) or not any(r['path']=='source/app/recognition.py' for r in records):
+              raise SystemExit('Required core source files were not found.')
+          payload['SHIRA_ALL_SOURCE_UTF8.txt'] = codecs.BOM_UTF8 + ''.join(bundle).encode('utf-8')
+          payload['MANIFEST.json'] = json.dumps({'source_commit':commit,'source_directory':str(src),'files':records},ensure_ascii=False,indent=2).encode('utf-8')
+          payload['README_RU.md'] = ('# SHIRA: исходники для передачи AI\n\nsource/ содержит исходные файлы с сохранением путей. SHIRA_ALL_SOURCE_UTF8.txt содержит тот же текст единым UTF-8 файлом с BOM для загрузки в другую AI. MANIFEST.json фиксирует commit и SHA-256.\n\nЭто копия исходников, не новый исправленный релиз. Зависимости, бинарники OCR, модели, видео и историческая папка original исключены. Для запуска потребуется полноценная установка. Подробный промпт передаётся отдельно.\n').encode('utf-8')
+          sums = ''.join(hashlib.sha256(data).hexdigest()+'  '+name+'\n' for name,data in sorted(payload.items()))
+          payload['SHA256SUMS.txt'] = sums.encode('utf-8')
+          total = sum(map(len,payload.values()))
+          if total > 25000000:
+              raise SystemExit('Export exceeds 25,000,000 bytes: '+str(total))
+          for name,data in payload.items():
+              target = dst/name
+              target.parent.mkdir(parents=True,exist_ok=True)
+              target.write_bytes(data)
+          actual = sum(p.stat().st_size for p in dst.rglob('*') if p.is_file())
+          assert actual == total and actual <= 25000000
+          print('Exported',len(records),'source files; total folder size:',actual,'bytes')
+      - name: Commit compact source folder
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- AI_SOURCE_UNDER_25MB
+          git commit -m 'Create source-only SHIRA handoff under 25 MB'
+          git push origin HEAD:main
