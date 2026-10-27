@@ -8,5 +8,10 @@
   "windows_execution_tested": false,
   "real_8_hour_video_load_tested": false,
   "artificial_9_hour_container_timestamp_tested": true,
-  "real_user_video_accuracy_measured": false
+  "real_user_video_accuracy_measured": false,
+  "tests_total": 81,
+  "tests_pass_linux_sandbox": 75,
+  "tests_environmental_linux_sandbox": 6,
+  "photo_tests": 14,
+  "classify_mode_boundary_cases": [3599, 3599.999, 3600, 3601, null]
 }
