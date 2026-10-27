@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Sitemap указать с реальным доменом перед публикацией.
+# Sitemap: https://example.com/arena%20%D1%81%D0%B0%D0%B9%D1%82/sitemap.xml
