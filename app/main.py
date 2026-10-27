@@ -7,6 +7,7 @@ from storage import Store,AppLock,EXTENSIONS,LABELS
 from engine import Engine
 from platform_ui import app_identity,icon,open_path,copy_files
 from imageview import brand_icon,Rotations,render_image
+from photo_ui import PhotoWindow
 
 def make_scrollable(parent,padding=15):
  frame=ttk.Frame(parent);frame.pack(fill='both',expand=True)
@@ -28,11 +29,14 @@ def make_scrollable(parent,padding=15):
 class Application:
  def __init__(self,root,store):
   self.root=root;self.store=store;self.cfg=settings();self.events=queue.Queue(maxsize=500);self.engine=Engine(store,self.post);self.rot=Rotations()
-  self.page=0;self.total=0;self.sort='created';self.desc=True;self.rows={};self.busy=0;self.closed=False;self.last_refresh=0
+  self.page=0;self.total=0;self.sort='created';self.desc=True;self.rows={};self.busy=0;self.closed=False;self.last_refresh=0;self.photo_window=None
   root.title('SHIRA '+VERSION+' — этикетки и видеоархив');root.geometry('1320x850');root.minsize(1000,650);icon(root)
   root.protocol('WM_DELETE_WINDOW',self.close);root.report_callback_exception=self.callback_error
   style=ttk.Style();style.theme_use('clam');style.configure('Treeview',rowheight=28);style.configure('TButton',padding=5)
-  self.build();self.store.recover();self.refresh();self.bind_copy(root);root.after(120,self.poll)
+  self.build();self.store.recover();self.refresh();self.bind_copy(root);root.bind('<Button-1>',self.clear_selection_if_empty,add='+');root.after(120,self.poll)
+ def clear_selection_if_empty(self,event):
+  if event.widget is self.tree:return
+  if self.tree.selection():self.tree.selection_remove(*self.tree.selection())
  def callback_error(self,kind,value,tb):
   self.engine.logger.error('GUI callback',exc_info=(kind,value,tb));messagebox.showerror('SHIRA',str(value),parent=self.root)
  def post(self,kind,value):
@@ -68,13 +72,14 @@ class Application:
   ttk.Button(header,text='Инструкция',command=lambda:self.safe_open(ROOT/'README_RU.md')).pack(side='right')
   bar=ttk.Frame(frame);bar.pack(fill='x',pady=8)
   ttk.Button(bar,text='Добавить файлы',command=self.add_files).pack(side='left');ttk.Button(bar,text='Добавить папку',command=self.add_folder).pack(side='left',padx=4)
-  ttk.Label(bar,text='Сессия:').pack(side='left',padx=(8,2));self.mode=tk.StringVar(value='Короткая' if self.cfg['mode']=='short' else 'Длительная')
-  ttk.Combobox(bar,textvariable=self.mode,values=['Короткая','Длительная'],state='readonly',width=13).pack(side='left')
+  ttk.Label(bar,text='Режим:').pack(side='left',padx=(8,2));self.mode=tk.StringVar(value={'short':'Короткая','long':'Длительная','photo':'Фото'}[self.cfg['mode']])
+  ttk.Combobox(bar,textvariable=self.mode,values=['Короткая','Длительная','Фото'],state='readonly',width=14).pack(side='left')
   ttk.Label(bar,text='Профиль:').pack(side='left',padx=(8,2));self.profile=tk.StringVar(value=self.cfg['profile'])
   ttk.Combobox(bar,textvariable=self.profile,values=list(PROFILES),state='readonly',width=11).pack(side='left');ttk.Button(bar,text='Авто',command=self.auto).pack(side='left',padx=4)
   ttk.Button(bar,text='Настройки / шаблоны',command=self.preferences).pack(side='right')
   actions=ttk.Frame(frame);actions.pack(fill='x',pady=(0,6))
   ttk.Button(actions,text='Обработать очередь',command=self.start).pack(side='left');ttk.Button(actions,text='Стоп',command=self.stop).pack(side='left',padx=4)
+  ttk.Button(actions,text='Группировка фото',command=self.open_photo_window).pack(side='left',padx=4)
   ttk.Button(actions,text='Повторить выбранные',command=self.retry).pack(side='left');ttk.Button(actions,text='Повторить пропуски',command=self.retry_gaps_ui).pack(side='left',padx=4);ttk.Button(actions,text='Сначала / переиндексировать',command=lambda:self.retry(True)).pack(side='left')
   ttk.Button(actions,text='Индекс этикеток',command=self.index).pack(side='left',padx=4);ttk.Button(actions,text='Экспорт',command=self.export).pack(side='right');ttk.Button(actions,text='Бэкап БД',command=self.backup).pack(side='right',padx=4)
   filters=ttk.Frame(frame);filters.pack(fill='x',pady=5)
@@ -101,15 +106,26 @@ class Application:
   self.status=tk.StringVar(value='Готово');ttk.Label(frame,textvariable=self.status).pack(fill='x',pady=4)
   self.log=tk.Text(frame,height=5,wrap='word',state='disabled');self.log.pack(fill='x')
  def active_cfg(self):
-  self.cfg['profile']=self.profile.get();self.cfg['mode']='short' if self.mode.get()=='Короткая' else 'long';atomic_json(data_dir()/'settings-v2.json',self.cfg);return worker_config(self.cfg)
+  self.cfg['profile']=self.profile.get();self.cfg['mode']={'Короткая':'short','Длительная':'long','Фото':'photo'}[self.mode.get()];atomic_json(data_dir()/'settings-v2.json',self.cfg);return worker_config(self.cfg)
  def auto(self):
   profile,stats=auto_profile();self.profile.set(profile);self.active_cfg();self.status.set(f"Авто: {PROFILES[profile]['label']}; доступно RAM {stats['available_ram_gb']} ГБ, физических ядер {stats['physical_cores']}. Для новых заданий.")
  def add_files(self):
   paths=filedialog.askopenfilenames(parent=self.root,title='Выберите видео / изображения',filetypes=[('Видео и фото',' '.join('*'+e for e in sorted(EXTENSIONS))),('Все файлы','*.*')])
-  if paths:self.import_paths(paths)
+  if paths:
+   if self.active_cfg()['mode']=='photo':self.open_photo_window(paths)
+   else:self.import_paths(paths)
  def add_folder(self):
   folder=filedialog.askdirectory(parent=self.root)
-  if folder:self.import_paths([folder])
+  if folder:
+   if self.active_cfg()['mode']=='photo':self.open_photo_window([folder])
+   else:self.import_paths([folder])
+ def open_photo_window(self,paths=None):
+  if getattr(self,'photo_window',None) and self.photo_window.win.winfo_exists():
+   self.photo_window.win.focus_set();return
+  self.photo_window=PhotoWindow(self.root)
+  if paths:
+   self.photo_window.files=[Path(p) for p in paths if Path(p).suffix.lower() in EXTENSIONS]
+   self.photo_window.count()
  def import_paths(self,values):
   cfg=self.active_cfg();recursive=self.cfg.get('recursive',True)
   def work():
@@ -131,8 +147,10 @@ class Application:
    return f'добавлено {count}, ошибок {errors}; профиль и шаг сохранены для каждого задания'
   self.background(work,'Добавление файлов')
  def start(self):
-  if self.busy:messagebox.showinfo('SHIRA','Дождитесь завершения добавления / экспорта',parent=self.root);return
-  cfg=self.active_cfg();self.engine.start(PROFILES[cfg['profile']]['workers']);self.status.set('Обработка очереди. Стоп сохраняет последнюю контрольную точку.')
+  if self.busy:messagebox.showinfo('SHIRA','Дождитесь завершения добавления / экспорта / резервного копирования',parent=self.root);return
+  cfg=self.active_cfg()
+  if cfg['mode']=='photo':return self.open_photo_window()
+  self.engine.start(PROFILES[cfg['profile']]['workers']);self.status.set('Обработка очереди. Стоп сохраняет последнюю контрольную точку.')
  def stop(self):self.engine.stop();self.status.set('Остановка обработчиков…')
  def selected(self):return [key for key in self.tree.selection() if key in self.rows]
  def retry(self,reset=False):
@@ -245,7 +263,7 @@ class Application:
   if not path.is_file():messagebox.showinfo('Отчёт сканирования','Отчёта пока нет: он создаётся после первой обработки короткой сессии.',parent=self.root);return
   self.safe_open(path)
  def preferences(self):
-  win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('980x900');win.minsize(860,560);win.resizable(True,True);self.bind_copy(win)
+  win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('980x900');win.minsize(860,560);win.resizable(True,True);self.bind_copy(win);center_window(win)
   canvas,frame=make_scrollable(win)
   ttk.Label(frame,text='Изменения применяются к новым заданиям. Уже добавленные используют сохранённые настройки.').pack(anchor='w')
   ttk.Label(frame,text='Шаг поиска QR в длинном видео, секунд (0.1–60):').pack(anchor='w',pady=(10,0));step=tk.StringVar(value=str(self.cfg['long_step']));ttk.Entry(frame,textvariable=step).pack(fill='x')
@@ -312,3 +330,210 @@ class Application:
     win.after(150,poll);return
    if proc.returncode==0 and Path(out).is_file() and Path(out).stat().st_size>0:done(out,'')
    else:drop();done(None,'Не удалось прочитать кадр. Возможно, исходник перемещён или кодек не поддержан.')
+  win.after(150,poll)
+ def review(self):
+  keys=self.selected()
+  if not keys:return
+  key=keys[0];row=self.store.get(key)
+  if row['mode']=='long':self.index(key);return
+  win=tk.Toplevel(self.root);icon(win);win.title('Проверка: '+row['name']);win.geometry('1180x920');win.minsize(960,700);win.resizable(True,True);self.bind_copy(win);center_window(win)
+  frame=ttk.Frame(win,padding=12);frame.pack(fill='both',expand=True)
+  path=tk.StringVar(value=row['path']);ttk.Entry(frame,textvariable=path,state='readonly').pack(fill='x')
+  buttons=ttk.Frame(frame);buttons.pack(fill='x',pady=5)
+  ttk.Button(buttons,text='К файлу',command=lambda:self.safe_open(row['path'],True)).pack(side='left');ttk.Button(buttons,text='Копировать путь',command=lambda:self.clipboard(row['path'])).pack(side='left',padx=4)
+  def cf():
+   try:copy_files(self.root,[row['path']]);self.status.set('Файл скопирован для вставки')
+   except Exception as exc:messagebox.showerror('Файл',str(exc),parent=win)
+  ttk.Button(buttons,text='Копировать файл для письма',command=cf).pack(side='left');ttk.Button(buttons,text='Открыть видео',command=lambda:self.safe_open(row['path'])).pack(side='left',padx=4)
+  info=ttk.Entry(frame,state='normal');info.insert(0,LABELS[row['state']]+' · '+row['detail']);info.configure(state='readonly');info.pack(fill='x')
+  shown={'path':row['evidence'] or '','temp':None}
+  image_label=ttk.Label(frame,text='Кадр не сохранён');image_label.pack(fill='both',expand=True,pady=8)
+  def show():
+   if shown['path']:self.load_image(image_label,shown['path'],(1050,560),self.rot.get(key))
+  def turn(delta):
+   self.rot.add(key,delta);show()
+  tools=ttk.Frame(frame);tools.pack(fill='x')
+  for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(tools,text=label,command=lambda d=delta:turn(d)).pack(side='left',padx=2)
+  ttk.Button(tools,text='Кадр крупно',command=lambda:FullImage(self,win,shown['path'],key)).pack(side='left',padx=8)
+  hits,total=self.store.hits(key);text=tk.Text(frame,height=5,wrap='word');text.pack(fill='x',pady=(8,0))
+  for hit in hits:text.insert('end',f"{hit['number']} · {hit['market']} · {stamp(hit['ts'])} · {hit['method']}\n")
+  text.configure(state='disabled')
+  if shown['path'] and Path(shown['path']).is_file():show()
+  else:
+   shown['path']='';gaps=self.store.gaps(key);ts=hits[0]['ts'] if hits else (gaps[0]['start'] if gaps else 0)
+   image_label.configure(text='Извлекаю кадр из видео…')
+   def done(frame_path,message):
+    if frame_path:shown['path']=frame_path;shown['temp']=frame_path;show()
+    else:image_label.configure(text=message)
+   self.fetch_frame(win,row['path'],ts,done)
+  win.bind('<Destroy>',lambda e:Path(shown['temp']).unlink(missing_ok=True) if e.widget is win and shown['temp'] else None)
+  edit=ttk.Frame(frame);edit.pack(fill='x',pady=6);ttk.Label(edit,text='Номер:').pack(side='left');number=tk.StringVar(value=row['number']);ttk.Entry(edit,textvariable=number,width=40).pack(side='left',padx=4);market=tk.StringVar(value=row['market']);ttk.Entry(edit,textvariable=market,width=22).pack(side='left')
+  def confirm():
+   try:self.store.confirm(key,number.get(),market.get());self.refresh();win.destroy()
+   except Exception as exc:messagebox.showerror('Проверка',str(exc),parent=win)
+  foot=ttk.Frame(frame);foot.pack(fill='x');ttk.Button(foot,text='Подтвердить номер',command=confirm).pack(side='left');ttk.Button(foot,text='История',command=lambda:self.history(key)).pack(side='left',padx=4);ttk.Button(foot,text='Индекс / все кадры',command=lambda:self.index(key)).pack(side='left');ttk.Button(foot,text='Закрыть',command=win.destroy).pack(side='right')
+ def load_image(self,label,path,size,angle=0):
+  if not path or not Path(path).is_file():return
+  try:
+   from PIL import ImageTk
+   im=render_image(path,angle,size)
+   label._photo=ImageTk.PhotoImage(im);label.configure(image=label._photo,text='')
+  except Exception as exc:label.configure(text='Ошибка кадра: '+str(exc))
+ def history(self,key):
+  win=tk.Toplevel(self.root);icon(win);win.title('История и пропуски');win.geometry('980x700');win.minsize(760,520);win.resizable(True,True);self.bind_copy(win);center_window(win)
+  text=tk.Text(win,wrap='word');text.pack(fill='both',expand=True)
+  text.insert('end',json.dumps(dict(gaps=self.store.gaps(key),audit=self.store.history(key)),ensure_ascii=False,indent=2));text.configure(state='disabled')
+ def index(self,key=None):
+  IndexWindow(self,key)
+ def close(self):
+  if self.busy:messagebox.showinfo('SHIRA','Дождитесь завершения добавления / экспорта / резервного копирования',parent=self.root);return
+  if self.engine.running():
+   if not messagebox.askyesno('Выход','Остановить обработку и выйти? Незавершённый интервал будет обработан заново.',parent=self.root):return
+   self.engine.stop()
+   def wait():
+    if self.engine.running():self.root.after(200,wait)
+    else:self.finish_close()
+   wait()
+  else:self.finish_close()
+ def finish_close(self):self.closed=True;self.root.destroy()
+
+class FullImage:
+ # Кадр в полном размере с прокруткой и поворотом: так читаются мелкие символы.
+ def __init__(self,app,parent,path,key):
+  if not path or not Path(path).is_file():messagebox.showinfo('SHIRA','Кадр ещё не загружен',parent=parent);return
+  self.app=app;self.path=path;self.key=key;win=self.win=tk.Toplevel(parent);icon(win);win.title('Кадр в полном размере');win.geometry('1280x860');win.minsize(900,640);win.resizable(True,True);center_window(win)
+  bar=ttk.Frame(win,padding=6);bar.pack(fill='x')
+  for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(bar,text=label,command=lambda d=delta:self.turn(d)).pack(side='left',padx=2)
+  ttk.Button(bar,text='Открыть во внешней программе',command=lambda:app.safe_open(self.path)).pack(side='left',padx=8)
+  box=ttk.Frame(win);box.pack(fill='both',expand=True)
+  self.canvas=tk.Canvas(box,background='#222222',highlightthickness=0);vs=ttk.Scrollbar(box,orient='vertical',command=self.canvas.yview);hs=ttk.Scrollbar(box,orient='horizontal',command=self.canvas.xview)
+  self.canvas.configure(yscrollcommand=vs.set,xscrollcommand=hs.set);self.canvas.grid(row=0,column=0,sticky='nsew');vs.grid(row=0,column=1,sticky='ns');hs.grid(row=1,column=0,sticky='ew');box.rowconfigure(0,weight=1);box.columnconfigure(0,weight=1)
+  self.draw()
+ def draw(self):
+  try:
+   from PIL import ImageTk
+   im=render_image(self.path,self.app.rot.get(self.key),None);self.photo=ImageTk.PhotoImage(im)
+   self.canvas.delete('all');self.canvas.create_image(0,0,anchor='nw',image=self.photo);self.canvas.configure(scrollregion=(0,0,im.width,im.height))
+  except Exception as exc:messagebox.showerror('Кадр','Не удалось показать кадр: '+str(exc),parent=self.win)
+ def turn(self,delta):
+  self.app.rot.add(self.key,delta);self.draw()
+
+class IndexWindow:
+ SIZE=(1250,480)
+ def __init__(self,app,key):
+  self.app=app;self.key=key;self.page=0;self.sort='ts';self.desc=False;self.rows={};self.temp=None;self.current=None;self.fetching=False
+  win=self.win=tk.Toplevel(app.root);icon(win);win.title('Индекс этикеток — поиск и таймкоды');win.geometry('1360x980');win.minsize(1100,760);win.resizable(True,True);app.bind_copy(win);center_window(win);win.protocol('WM_DELETE_WINDOW',self.close)
+  frame=ttk.Frame(win,padding=10);frame.pack(fill='both',expand=True);bar=ttk.Frame(frame);bar.pack(fill='x')
+  self.query=tk.StringVar(value=app.search.get());ttk.Label(bar,text='Трек:').pack(side='left');entry=ttk.Entry(bar,textvariable=self.query,width=36);entry.pack(side='left',padx=4);entry.bind('<Return>',lambda e:self.search());ttk.Button(bar,text='Найти',command=self.search).pack(side='left');ttk.Button(bar,text='←',command=lambda:self.change(-1)).pack(side='left',padx=4);ttk.Button(bar,text='→',command=lambda:self.change(1)).pack(side='left');self.info=tk.StringVar();ttk.Label(bar,textvariable=self.info).pack(side='left',padx=8)
+  cols=('number','ts','method','state','name','path');self.tree=ttk.Treeview(frame,columns=cols,show='headings',height=8,selectmode='extended')
+  for col,label,width in zip(cols,['Номер','Время','Источник','Проверка','Видео','Путь'],[190,110,150,120,220,350]):self.tree.heading(col,text=label,command=lambda c=col:self.sort_by(c));self.tree.column(col,width=width)
+  self.tree.pack(fill='x',pady=7);self.tree.bind('<<TreeviewSelect>>',lambda e:self.select());self.tree.bind('<Control-c>',self.copy);self.tree.bind('<Control-a>',lambda e:self.tree.selection_set(self.tree.get_children()));self.tree.bind('<Double-1>',lambda e:self.preview())
+  actions=ttk.Frame(frame);actions.pack(fill='x')
+  for label,fn in [('Кадр по таймкоду',self.preview),('Открыть видео',self.open_video),('К файлу',self.reveal),('Копировать строки',self.copy),('Копировать путь',self.copy_path),('Подтвердить трек',self.confirm),('Сводка',self.summary)]:ttk.Button(actions,text=label,command=fn).pack(side='left',padx=2)
+  view=ttk.Frame(frame);view.pack(fill='x',pady=(6,0))
+  for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(view,text=label,command=lambda d=delta:self.turn(d)).pack(side='left',padx=2)
+  ttk.Button(view,text='Кадр крупно',command=self.full).pack(side='left',padx=8)
+  self.path=tk.StringVar();ttk.Entry(frame,textvariable=self.path,state='readonly').pack(fill='x',pady=5)
+  self.image=ttk.Label(frame,text='Выберите этикетку. Двойной щелчок — кадр на её таймкоде.');self.image.pack(fill='both',expand=True)
+  ttk.Label(frame,text='Время — позиция выбранного кадра, не точные границы появления этикетки. Поиск показывает наблюдения, а не гарантированный список всех посылок.').pack(fill='x')
+  if key:ttk.Button(frame,text='Пропуски и история этого видео',command=lambda:app.history(key)).pack(anchor='w')
+  self.refresh()
+ def sort_by(self,col):
+  if self.sort==col:self.desc=not self.desc
+  else:self.sort=col;self.desc=False
+  self.page=0;self.refresh()
+ def summary(self):
+  rows=self.app.store.summary(self.key,self.query.get());win=tk.Toplevel(self.win);icon(win);win.title('Сводка: первые / последние наблюдения');win.geometry('1080x620');win.minsize(860,480);win.resizable(True,True);self.app.bind_copy(win);center_window(win)
+  text=tk.Text(win,wrap='none');text.pack(fill='both',expand=True)
+  text.insert('end','Номер\tПервое наблюдение\tПоследнее наблюдение\tКадров\tВидео\n')
+  for r in rows:text.insert('end',f"{r['number']}\t{stamp(r['first_seen'])}\t{stamp(r['last_seen'])}\t{r['samples']}\t{r['path']}\n")
+  text.insert('end','\nДо 200 групп на экране. Сводка не определяет количество посылок и точные границы появления. Для всех наблюдений используйте экспорт.');text.configure(state='disabled')
+ def search(self):self.page=0;self.refresh()
+ def refresh(self):
+  rows,total=self.app.store.hits(self.key,self.query.get(),self.page,self.sort,self.desc);self.rows={str(r['id']):r for r in rows};self.total=total;self.tree.delete(*self.tree.get_children())
+  for r in rows:self.tree.insert('',tk.END,iid=str(r['id']),values=(r['number'],stamp(r['ts']),r['method'],LABELS.get(r['state'],r['state']),r['name'],r['path']))
+  self.info.set(f'Наблюдений {total}, страница {self.page+1}')
+ def change(self,delta):
+  if 0<=self.page+delta<max(1,(self.total+199)//200):self.page+=delta;self.refresh()
+ def selected(self):
+  keys=self.tree.selection();return self.rows.get(keys[0]) if keys else None
+ def show(self,path,task_id):
+  self.current=(path,task_id);self.app.load_image(self.image,path,self.SIZE,self.app.rot.get(task_id))
+ def select(self):
+  r=self.selected()
+  if r:
+   self.path.set(r['path'])
+   if r['evidence'] and Path(r['evidence']).is_file():self.show(r['evidence'],r['task_id'])
+ def turn(self,delta):
+  if not self.current:return
+  path,task_id=self.current
+  if not Path(path).is_file():return
+  self.app.rot.add(task_id,delta);self.show(path,task_id)
+ def full(self):
+  if self.current:FullImage(self.app,self.win,self.current[0],self.current[1])
+  else:messagebox.showinfo('SHIRA','Сначала выберите этикетку',parent=self.win)
+ def copy(self,event=None):return self.app.clipboard('\n'.join('\t'.join(str(x) for x in self.tree.item(k,'values')) for k in self.tree.selection()))
+ def copy_path(self):
+  r=self.selected()
+  if r:self.app.clipboard(r['path'])
+ def reveal(self):
+  r=self.selected()
+  if r:self.app.safe_open(r['path'],True)
+ def open_video(self):
+  r=self.selected()
+  if r:self.app.safe_open(r['path'])
+ def confirm(self):
+  r=self.selected()
+  if not r:return
+  from tkinter.simpledialog import askstring
+  number=askstring('Подтверждение','Номер этикетки:',initialvalue=r['number'],parent=self.win)
+  if number:
+   try:self.app.store.confirm(r['task_id'],number,r['market'],r['id']);self.refresh();self.app.refresh()
+   except Exception as exc:messagebox.showerror('Подтверждение',str(exc),parent=self.win)
+ def preview(self):
+  r=self.selected()
+  if not r or self.fetching:return
+  self.fetching=True;self.info.set('Извлечение кадра…')
+  def done(path,message):
+   self.fetching=False
+   if path:
+    self.drop_temp();self.temp=Path(path);self.show(path,r['task_id']);self.info.set('Кадр на выбранном таймкоде')
+   else:self.info.set(message)
+  self.app.fetch_frame(self.win,r['path'],r['ts'],done)
+ def drop_temp(self):
+  if self.temp:self.temp.unlink(missing_ok=True);self.temp=None
+ def close(self):
+  self.drop_temp();self.win.destroy()
+
+def center_window(win):
+ try:
+  win.update_idletasks()
+  w=win.winfo_width();h=win.winfo_height()
+  x=max(0,(win.winfo_screenwidth()-w)//2);y=max(0,(win.winfo_screenheight()-h)//2)
+  win.geometry(f'+{x}+{y}')
+  win.attributes('-alpha',0)
+  def fade(step=0):
+   if not win.winfo_exists():return
+   step+=1
+   win.attributes('-alpha',min(1,step/12))
+   if step<12:win.after(16,lambda:fade(step))
+  win.after(20,fade)
+ except Exception:pass
+
+def enable_dpi():
+ if os.name!='nt':return
+ import ctypes
+ try:ctypes.windll.shcore.SetProcessDpiAwareness(2)
+ except Exception:
+  try:ctypes.windll.user32.SetProcessDPIAware()
+  except Exception:pass
+
+def main():
+ app_identity();lock=AppLock()
+ try:
+  lock.acquire();enable_dpi();root=tk.Tk()
+  try:root.tk.call('tk','scaling',root.winfo_fpixels('1i')/72.0)
+  except tk.TclError:pass
+  Application(root,Store());root.mainloop()
+ finally:lock.close()
+if __name__=='__main__':multiprocessing.freeze_support();main()
