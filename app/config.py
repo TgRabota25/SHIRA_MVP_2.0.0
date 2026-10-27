@@ -88,3 +88,24 @@ def worker_config(value):
 def stamp(seconds):
  seconds=max(0,float(seconds));h=int(seconds//3600);m=int(seconds//60)%60;s=seconds%60
  return f'{h:02d}:{m:02d}:{s:06.3f}'
+
+def classify_mode(duration_seconds):
+    # Уточнённая граница без пересечения режимов:
+    # короткое — меньше 3600 секунд; длинное — от 3600 включительно.
+    # Неизвестная длительность не классифицируется по выдуманному значению.
+    if duration_seconds is None:return None
+    try:d=float(duration_seconds)
+    except (TypeError,ValueError):return None
+    if d!=d or d<0:return None
+    return 'long' if d>=3600.0 else 'short'
+
+
+# QR-anchored ROI scaffold
+QR_ANCHORED_ROI = {
+    'enabled': True,
+    'accept_min_votes': 2,
+    'track_roi': {'x': 0.18, 'y': 0.42, 'w': 0.64, 'h': 0.14},
+    'ocr_psm': 7,
+    'ocr_whitelist': '0123456789-',
+    'debug_save': True,
+}
