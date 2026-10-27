@@ -64,7 +64,7 @@ def settings():
  except (ValueError,OSError):pass
  value['patterns']=_merge_patterns(value.get('patterns'))
  if value.get('profile') not in PROFILES:value['profile']='weak'
- if value.get('mode') not in ('short','long'):value['mode']='short'
+ if value.get('mode') not in ('short','long','photo'):value['mode']='short'
  try:value['long_step']=min(60,max(.1,float(value['long_step'])))
  except (ValueError,TypeError):value['long_step']=1.0
  try:value['long_ocr_every']=min(100,max(1,int(value['long_ocr_every'])))
