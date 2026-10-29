@@ -34,6 +34,17 @@ PALETTES: Dict[str, Dict[str, str]] = {
         'error_soft': '#fef2f2',
         'info': '#0ea5e9',
         'info_soft': '#f0f9ff',
+        # Заливка заполненных кнопок с белым текстом: WCAG AA 4.5:1 к белому
+        # и ≥ 3:1 к поверхности обеих тем (расчитано по относительной яркости).
+        'accent_btn': '#1e4ed8',
+        'accent_btn_hover': '#1d4ed8',
+        'accent_btn_pressed': '#1e3a8a',
+        'success_btn': '#0e6b38',
+        'success_btn_hover': '#0a4d24',
+        'success_btn_pressed': '#0b3d20',
+        'danger_btn': '#b91c1c',
+        'danger_btn_hover': '#8f1818',
+        'danger_btn_pressed': '#7f1d1d',
     },
     'dark': {
         'ink': '#f8fafc',
@@ -54,6 +65,16 @@ PALETTES: Dict[str, Dict[str, str]] = {
         'error_soft': '#7f1d1d',
         'info': '#06b6d4',
         'info_soft': '#0c4a6e',
+        # Кнопки — одинаковая заливка в обеих темах (цвет не несет смысла без текста).
+        'accent_btn': '#1e4ed8',
+        'accent_btn_hover': '#1d4ed8',
+        'accent_btn_pressed': '#1e3a8a',
+        'success_btn': '#0e6b38',
+        'success_btn_hover': '#0a4d24',
+        'success_btn_pressed': '#0b3d20',
+        'danger_btn': '#b91c1c',
+        'danger_btn_hover': '#8f1818',
+        'danger_btn_pressed': '#7f1d1d',
     },
 }
 
@@ -141,26 +162,26 @@ def apply_theme(root: tk.Tk | tk.Toplevel, mode: str = DEFAULT_THEME) -> Dict[st
               background=[('active', pal['surface_alt']), ('pressed', pal['border'])],
               foreground=[('active', pal['ink']), ('pressed', pal['ink'])])
 
-    style.configure('Accent.TButton', background=pal['accent'], foreground='#ffffff',
-                    font=F['ui_bold'], bordercolor=pal['accent'], borderwidth=0, focuscolor=pal['accent'],
+    style.configure('Accent.TButton', background=pal['accent_btn'], foreground='#ffffff',
+                    font=F['ui_bold'], bordercolor=pal['accent_btn_pressed'], borderwidth=1, focuscolor=pal['accent'],
                     padding=(14, 7))
     style.map('Accent.TButton',
-              background=[('active', pal['accent_hover']), ('pressed', pal['accent_pressed']), ('disabled', '#94a3b8')],
+              background=[('active', pal['accent_btn_hover']), ('pressed', pal['accent_btn_pressed']), ('disabled', '#94a3b8')],
               foreground=[('active', '#ffffff'), ('pressed', '#ffffff'), ('disabled', '#cbd5e1')])
 
-    style.configure('Success.TButton', background=pal['success'], foreground='#ffffff',
-                    font=F['ui_bold'], bordercolor=pal['success'], borderwidth=0, focuscolor=pal['success'],
+    style.configure('Success.TButton', background=pal['success_btn'], foreground='#ffffff',
+                    font=F['ui_bold'], bordercolor=pal['success_btn_pressed'], borderwidth=1, focuscolor=pal['success'],
                     padding=(12, 6))
     style.map('Success.TButton',
-              background=[('active', '#0f766e' if mode == 'light' else '#16a34a'), ('pressed', '#14532d')],
-              foreground=[('active', '#ffffff'), ('pressed', '#ffffff')])
+              background=[('active', pal['success_btn_hover']), ('pressed', pal['success_btn_pressed']), ('disabled', '#94a3b8')],
+              foreground=[('active', '#ffffff'), ('pressed', '#ffffff'), ('disabled', '#cbd5e1')])
 
-    style.configure('Danger.TButton', background=pal['error'], foreground='#ffffff',
-                    font=F['ui_bold'], bordercolor=pal['error'], borderwidth=0, focuscolor=pal['error'],
+    style.configure('Danger.TButton', background=pal['danger_btn'], foreground='#ffffff',
+                    font=F['ui_bold'], bordercolor=pal['danger_btn_pressed'], borderwidth=1, focuscolor=pal['error'],
                     padding=(12, 6))
     style.map('Danger.TButton',
-              background=[('active', '#dc2626'), ('pressed', '#991b1b')],
-              foreground=[('active', '#ffffff'), ('pressed', '#ffffff')])
+              background=[('active', pal['danger_btn_hover']), ('pressed', pal['danger_btn_pressed']), ('disabled', '#94a3b8')],
+              foreground=[('active', '#ffffff'), ('pressed', '#ffffff'), ('disabled', '#cbd5e1')])
 
     # Поля ввода и выпадающие списки
     style.configure('TEntry', fieldbackground=pal['surface'], foreground=pal['ink'],

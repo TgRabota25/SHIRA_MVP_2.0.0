@@ -36,7 +36,7 @@ class Application:
   root.protocol('WM_DELETE_WINDOW',self.close);root.report_callback_exception=self.callback_error
   style=ttk.Style();style.theme_use('clam')
   self.theme_mode=self.cfg.get('theme',DEFAULT_THEME)
-  self.theme=apply_theme(root,self.theme_mode);pal=self.theme['palette'];F=self.theme['fonts']
+  self.theme=apply_theme(root,self.theme_mode);pal=self.theme['palette']
   self.build();self.store.recover();self.refresh();self.bind_copy(root);root.bind('<Button-1>',self.clear_selection_if_empty,add='+');root.after(120,self.poll);root.after(80,lambda:center_window(root))
  def clear_selection_if_empty(self,event):
   if event.widget is self.tree:return
