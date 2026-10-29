@@ -3,6 +3,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk,filedialog,messagebox
 from config import ROOT,VERSION,PROFILES,settings,worker_config,auto_profile,atomic_json,data_dir,stamp
+from theme import apply_theme, state_tag_colors, DEFAULT_THEME
 from storage import Store,AppLock,EXTENSIONS,LABELS
 from engine import Engine
 from platform_ui import app_identity,icon,open_path,copy_files
@@ -33,16 +34,8 @@ class Application:
   root.title('SHIRA '+VERSION+' — этикетки и видеоархив');root.geometry('1320x850');root.minsize(1000,650);icon(root)
   root.protocol('WM_DELETE_WINDOW',self.close);root.report_callback_exception=self.callback_error
   style=ttk.Style();style.theme_use('clam')
-  ACCENT='#2563eb';ACCENT_HOVER='#1d4ed8';SUCCESS='#16a34a';DANGER='#dc2626'
-  style.configure('TButton',padding=6)
-  style.configure('Accent.TButton',foreground='white',background=ACCENT,focuscolor=ACCENT)
-  style.map('Accent.TButton',background=[('active',ACCENT_HOVER),('pressed','#1e40af')])
-  style.configure('Success.TButton',foreground='white',background=SUCCESS,focuscolor=SUCCESS)
-  style.map('Success.TButton',background=[('active','#15803d'),('pressed','#166534')])
-  style.configure('Danger.TButton',foreground='white',background=DANGER,focuscolor=DANGER)
-  style.map('Danger.TButton',background=[('active','#b91c1c'),('pressed','#991b1b')])
-  style.configure('Treeview',rowheight=28,fieldbackground='#fafafa')
-  style.configure('Treeview.Heading',font=('Segoe UI',10,'bold'))
+  self.theme_mode=self.cfg.get('theme',DEFAULT_THEME)
+  self.theme=apply_theme(root,self.theme_mode);pal=self.theme['palette'];F=self.theme['fonts']
   self.build();self.store.recover();self.refresh();self.bind_copy(root);root.bind('<Button-1>',self.clear_selection_if_empty,add='+');root.after(120,self.poll);root.after(80,lambda:center_window(root))
  def clear_selection_if_empty(self,event):
   if event.widget is self.tree:return
@@ -107,14 +100,14 @@ class Application:
    self.tree.heading(col,text=label,command=lambda c=col:self.sort_by(c));self.tree.column(col,width=width,minwidth=65,stretch=col in ('name','path'))
   vs=ttk.Scrollbar(table,orient='vertical',command=self.tree.yview);hs=ttk.Scrollbar(table,orient='horizontal',command=self.tree.xview);self.tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
   self.tree.grid(row=0,column=0,sticky='nsew');vs.grid(row=0,column=1,sticky='ns');hs.grid(row=1,column=0,sticky='ew');table.rowconfigure(0,weight=1);table.columnconfigure(0,weight=1)
-  for tag,color in [('review','#fff0c2'),('error','#fbd7d7'),('partial','#ffdcb5'),('done','#e0f3e8'),('accepted','#d3e9fd')]:self.tree.tag_configure(tag,background=color)
+  for tag,color in state_tag_colors(self.theme_mode).items():self.tree.tag_configure(tag,background=color)
   self.tree.bind('<Double-1>',self.double_click);self.tree.bind('<Control-c>',lambda e:self.copy_rows());self.tree.bind('<Control-C>',lambda e:self.copy_rows());self.tree.bind('<Control-a>',self.select_all);self.tree.bind('<Control-A>',self.select_all);self.tree.bind('<Button-3>',self.context);self.tree.bind('<<TreeviewSelect>>',lambda e:self.selection_changed())
   nav=ttk.Frame(frame);nav.pack(fill='x',pady=5);ttk.Button(nav,text='←',command=lambda:self.change_page(-1)).pack(side='left');self.page_label=tk.StringVar();ttk.Label(nav,textvariable=self.page_label).pack(side='left',padx=8);ttk.Button(nav,text='→',command=lambda:self.change_page(1)).pack(side='left')
   self.selected_label=tk.StringVar();ttk.Label(nav,textvariable=self.selected_label).pack(side='left',padx=15);ttk.Button(nav,text='Выделить страницу',command=self.select_all).pack(side='left')
   self.path_value=tk.StringVar();pathbar=ttk.Frame(frame);pathbar.pack(fill='x');ttk.Label(pathbar,text='Путь:').pack(side='left');pathentry=ttk.Entry(pathbar,textvariable=self.path_value,state='readonly');pathentry.pack(side='left',fill='x',expand=True,padx=4)
   ttk.Button(pathbar,text='К файлу',command=self.reveal).pack(side='left');ttk.Button(pathbar,text='Копировать путь',command=self.copy_paths).pack(side='left',padx=3);ttk.Button(pathbar,text='Копировать файл',command=self.copy_selected_files).pack(side='left')
   self.status=tk.StringVar(value='Готово');ttk.Label(frame,textvariable=self.status).pack(fill='x',pady=4)
-  self.log=tk.Text(frame,height=5,wrap='word',state='disabled');self.log.pack(fill='x')
+  self.log=tk.Text(frame,height=5,wrap='word',state='disabled',bg=pal['surface'],fg=pal['ink'],insertbackground=pal['ink'],borderwidth=1,relief='solid',highlightthickness=0);self.log.pack(fill='x')
  def active_cfg(self):
   self.cfg['profile']=self.profile.get();self.cfg['mode']={'Короткая':'short','Длительная':'long','Фото':'photo'}[self.mode.get()];atomic_json(data_dir()/'settings-v2.json',self.cfg);return worker_config(self.cfg)
  def auto(self):
@@ -276,6 +269,7 @@ class Application:
   win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('980x900');win.minsize(860,560);win.resizable(True,True);self.bind_copy(win);center_window(win)
   canvas,frame=make_scrollable(win)
   ttk.Label(frame,text='Изменения применяются к новым заданиям. Уже добавленные используют сохранённые настройки.').pack(anchor='w')
+  ttk.Label(frame,text='Тема оформления:').pack(anchor='w',pady=(10,0));theme_var=tk.StringVar(value=self.cfg.get('theme',DEFAULT_THEME));ttk.Combobox(frame,textvariable=theme_var,values=['light','dark','auto'],state='readonly',width=12).pack(anchor='w')
   ttk.Label(frame,text='Шаг поиска QR в длинном видео, секунд (0.1–60):').pack(anchor='w',pady=(10,0));step=tk.StringVar(value=str(self.cfg['long_step']));ttk.Entry(frame,textvariable=step).pack(fill='x')
   ttk.Label(frame,text='OCR на каждом N-м выбранном кадре (1 — весь шаг, медленнее):').pack(anchor='w');every=tk.StringVar(value=str(self.cfg['long_ocr_every']));ttk.Entry(frame,textvariable=every).pack(fill='x')
   ttk.Label(frame,text='Языки OCR:').pack(anchor='w');lang=tk.StringVar(value=self.cfg['language']);ttk.Combobox(frame,textvariable=lang,values=['rus+eng','eng','rus'],state='readonly').pack(fill='x')
@@ -312,7 +306,7 @@ class Application:
     for item in p:
      if not isinstance(item,dict) or not isinstance(item.get('regex'),str) or len(item['regex'])>300:raise ValueError('Некорректный шаблон')
      re.compile(item['regex'])
-    self.cfg.update(long_step=s,long_ocr_every=n,patterns=p,language=lang.get(),recursive=recursive.get(),short_frames=sfv,short_ocr_frames=sov,short_start=wsv,short_end=wev,short_second_pass=sp.get(),qr_text_fallback=fb.get(),qr_text_fallback_max=fmv,qr_strong_ocr=st.get(),fuzzy_841=fz.get());self.active_cfg();win.destroy()
+    self.cfg.update(long_step=s,long_ocr_every=n,patterns=p,language=lang.get(),recursive=recursive.get(),short_frames=sfv,short_ocr_frames=sov,short_start=wsv,short_end=wev,short_second_pass=sp.get(),qr_text_fallback=fb.get(),qr_text_fallback_max=fmv,qr_strong_ocr=st.get(),fuzzy_841=fz.get(),theme=theme_var.get());self.theme_mode=theme_var.get();self.theme=apply_theme(self.root,self.theme_mode);self.log.configure(bg=self.theme['palette']['surface'],fg=self.theme['palette']['ink']);self.refresh();self.active_cfg();win.destroy()
    except Exception as exc:messagebox.showerror('Настройки',str(exc),parent=win)
   ttk.Button(frame,text='Сохранить',command=save).pack(pady=8)
   def legacy():
