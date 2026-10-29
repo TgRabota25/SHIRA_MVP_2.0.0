@@ -3,7 +3,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk,filedialog,messagebox
 from config import ROOT,VERSION,PROFILES,settings,worker_config,auto_profile,atomic_json,data_dir,stamp
-from theme import apply_theme, state_tag_colors, DEFAULT_THEME
+from theme import apply_theme, DEFAULT_THEME, stat_card, status_badge, make_card, make_section, divider, apply_palette_to_widget
 from storage import Store,AppLock,EXTENSIONS,LABELS
 from engine import Engine
 from platform_ui import app_identity,icon,open_path,copy_files
@@ -32,11 +32,12 @@ class Application:
  def __init__(self,root,store):
   self.root=root;self.store=store;self.cfg=settings();self.events=queue.Queue(maxsize=500);self.engine=Engine(store,self.post);self.rot=Rotations()
   self.page=0;self.total=0;self.sort='created';self.desc=True;self.rows={};self.busy=0;self.closed=False;self.last_refresh=0;self.photo_window=None
-  root.title('SHIRA '+VERSION+' — этикетки и видеоархив');root.geometry('1320x850');root.minsize(1000,650);icon(root)
+  root.title('SHIRA '+VERSION+' — этикетки и видеоархив');root.geometry('1400x900');root.minsize(1150,720);icon(root)
   root.protocol('WM_DELETE_WINDOW',self.close);root.report_callback_exception=self.callback_error
   style=ttk.Style();style.theme_use('clam')
   self.theme_mode=self.cfg.get('theme',DEFAULT_THEME)
-  self.theme=apply_theme(root,self.theme_mode);pal=self.theme['palette']
+  self.theme=apply_theme(root,self.theme_mode)
+  self.nav_active=tk.StringVar(value='queue')
   self.build();self.store.recover();self.refresh();self.bind_copy(root);root.bind('<Button-1>',self.clear_selection_if_empty,add='+');root.after(120,self.poll);root.after(80,lambda:center_window(root))
  def clear_selection_if_empty(self,event):
   if event.widget is self.tree:return
@@ -65,50 +66,147 @@ class Application:
    finally:self.post('background_done',None)
   threading.Thread(target=work,daemon=True).start()
  def build(self):
-  frame=ttk.Frame(self.root,padding=10);frame.pack(fill='both',expand=True)
-  header=ttk.Frame(frame);header.pack(fill='x')
+  pal=self.theme['palette'];F=self.theme['fonts'];S=self.theme['space']
+  # ---------- Корневой контейнер ----------
+  root=tk.Frame(self.root,bg=pal['canvas']);root.pack(fill='both',expand=True)
+  # ---------- Боковая навигация ----------
+  sidebar=tk.Frame(root,bg=pal['surface'],width=220);sidebar.pack(side='left',fill='y');sidebar.pack_propagate(False)
+  tk.Frame(sidebar,bg=pal['border'],height=1).pack(side='right',fill='y')
+  brand=tk.Frame(sidebar,bg=pal['surface'],height=72);brand.pack(fill='x')
   try:
    from PIL import ImageTk
-   self.brand=ImageTk.PhotoImage(brand_icon(ROOT/'app/icon.png',42))
-  except Exception:self.brand=None
-  if self.brand:ttk.Label(header,image=self.brand).pack(side='left')
-  ttk.Label(header,text='SHIRA • локальный видеоархив',font=('Segoe UI',16,'bold')).pack(side='left',padx=8)
-  ttk.Button(header,text='Инструкция',command=lambda:self.safe_open(ROOT/'README_RU.md')).pack(side='right')
-  bar=ttk.Frame(frame);bar.pack(fill='x',pady=8)
-  ttk.Button(bar,text='Добавить файлы',command=self.add_files).pack(side='left');ttk.Button(bar,text='Добавить папку',command=self.add_folder).pack(side='left',padx=4)
-  ttk.Label(bar,text='Режим:').pack(side='left',padx=(8,2));self.mode=tk.StringVar(value={'short':'Короткая','long':'Длительная','photo':'Фото'}[self.cfg['mode']])
-  ttk.Combobox(bar,textvariable=self.mode,values=['Короткая','Длительная','Фото'],state='readonly',width=14).pack(side='left')
-  ttk.Label(bar,text='Профиль:').pack(side='left',padx=(8,2));self.profile=tk.StringVar(value=self.cfg['profile'])
-  ttk.Combobox(bar,textvariable=self.profile,values=list(PROFILES),state='readonly',width=11).pack(side='left');ttk.Button(bar,text='Авто',command=self.auto).pack(side='left',padx=4)
-  ttk.Button(bar,text='Настройки / шаблоны',command=self.preferences).pack(side='right')
-  actions=ttk.Frame(frame);actions.pack(fill='x',pady=(0,6))
-  ttk.Button(actions,text='Обработать очередь',command=self.start,style='Accent.TButton').pack(side='left');ttk.Button(actions,text='Стоп',command=self.stop).pack(side='left',padx=4)
-  ttk.Button(actions,text='Группировка фото',command=self.open_photo_window).pack(side='left',padx=4)
-  ttk.Button(actions,text='Повторить выбранные',command=self.retry).pack(side='left');ttk.Button(actions,text='Повторить пропуски',command=self.retry_gaps_ui).pack(side='left',padx=4);ttk.Button(actions,text='Сначала / переиндексировать',command=lambda:self.retry(True)).pack(side='left')
-  ttk.Button(actions,text='Индекс этикеток',command=self.index).pack(side='left',padx=4);ttk.Button(actions,text='Экспорт',command=self.export).pack(side='right');ttk.Button(actions,text='Бэкап БД',command=self.backup).pack(side='right',padx=4)
-  filters=ttk.Frame(frame);filters.pack(fill='x',pady=5)
-  ttk.Label(filters,text='Поиск по треку / пути:').pack(side='left');self.search=tk.StringVar();entry=ttk.Entry(filters,textvariable=self.search,width=37);entry.pack(side='left',padx=4);entry.bind('<Return>',lambda e:self.find())
-  ttk.Button(filters,text='Найти',command=self.find).pack(side='left');self.state=tk.StringVar(value='Все статусы');self.filter_mode=tk.StringVar(value='Все сессии')
-  statebox=ttk.Combobox(filters,textvariable=self.state,values=['Все статусы']+list(LABELS.values()),state='readonly',width=20);statebox.pack(side='left',padx=5);statebox.bind('<<ComboboxSelected>>',lambda e:self.find())
-  mb=ttk.Combobox(filters,textvariable=self.filter_mode,values=['Все сессии','Короткая','Длительная'],state='readonly',width=15);mb.pack(side='left');mb.bind('<<ComboboxSelected>>',lambda e:self.find())
-  ttk.Button(filters,text='Сброс',command=self.clear_filter).pack(side='left',padx=4)
-  table=ttk.Frame(frame);table.pack(fill='both',expand=True)
+   self.brand_img=ImageTk.PhotoImage(brand_icon(ROOT/'app/icon.png',32))
+   tk.Label(brand,image=self.brand_img,bg=pal['surface']).pack(side='left',padx=(16,8),pady=18)
+  except Exception:self.brand_img=None
+  tk.Label(brand,text='SHIRA',bg=pal['surface'],fg=pal['ink'],font=F['heading']).pack(side='left',pady=18)
+  tk.Label(brand,text='v'+VERSION,bg=pal['surface'],fg=pal['muted'],font=F['caption']).pack(side='left',pady=18)
+  nav_items=[('queue','Очередь','📋'),('index','Индекс этикеток','🔖'),('photo','Группировка фото','🖼️'),('settings','Настройки','⚙️')]
+  self.nav_buttons={}
+  for key,label,icon_txt in nav_items:
+   btn=tk.Button(sidebar,text=f'  {icon_txt}  {label}',bg=pal['surface'],fg=pal['muted'],font=F['ui'],
+                 bd=0,highlightthickness=0,activebackground=pal['accent_soft'],activeforeground=pal['accent_text'],
+                 cursor='hand2',anchor='w',padx=16,pady=12,
+                 command=lambda k=key:self._nav_switch(k))
+   btn.pack(fill='x')
+   self.nav_buttons[key]=btn
+  self._nav_switch('queue')
+  tk.Frame(sidebar,bg=pal['border_soft'],height=1).pack(fill='x',pady=S['4'])
+  theme_btn=tk.Button(sidebar,text='Тема: '+THEME_LABELS[self.theme_mode],bg=pal['surface'],fg=pal['muted'],
+                      font=F['small'],bd=0,highlightthickness=0,cursor='hand2',anchor='w',padx=16,pady=10,
+                      command=self._toggle_theme);theme_btn.pack(fill='x')
+  self.theme_btn=theme_btn
+  # ---------- Основное содержимое ----------
+  content=tk.Frame(root,bg=pal['canvas']);content.pack(side='left',fill='both',expand=True)
+  # --- Шапка ---
+  header=tk.Frame(content,bg=pal['canvas']);header.pack(fill='x',padx=S['6'],pady=(S['6'],S['4']))
+  tk.Label(header,text='Очередь задач',bg=pal['canvas'],fg=pal['ink'],font=F['heading']).pack(side='left')
+  tk.Button(header,text='Инструкция',bg=pal['surface'],fg=pal['muted'],font=F['small'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=10,pady=6,
+            command=lambda:self.safe_open(ROOT/'README_RU.md')).pack(side='right')
+  # --- Карточки статистики ---
+  stats=tk.Frame(content,bg=pal['canvas']);stats.pack(fill='x',padx=S['6'],pady=(0,S['4']))
+  for i in range(4):stats.columnconfigure(i,weight=1)
+  self.stat_cards={}
+  for idx,(key,label,accent) in enumerate([('total','Всего файлов','accent'),('pending','В очереди','info'),('done','Готово','success'),('errors','Ошибки','error')]):
+   card=stat_card(stats,'0',label,pal,accent);card.grid(row=0,column=idx,padx=S['2'],sticky='ew')
+   self.stat_cards[key]=card
+  # --- Панель управления ---
+  bar=tk.Frame(content,bg=pal['canvas']);bar.pack(fill='x',padx=S['6'],pady=(0,S['4']))
+  left=tk.Frame(bar,bg=pal['canvas']);left.pack(side='left')
+  tk.Button(left,text='Добавить файлы',bg=pal['surface'],fg=pal['ink'],font=F['ui'],bd=1,
+            highlightbackground=pal['border'],highlightthickness=1,cursor='hand2',padx=14,pady=8,
+            command=self.add_files).pack(side='left',padx=(0,S['2']))
+  tk.Button(left,text='Добавить папку',bg=pal['surface'],fg=pal['ink'],font=F['ui'],bd=1,
+            highlightbackground=pal['border'],highlightthickness=1,cursor='hand2',padx=14,pady=8,
+            command=self.add_folder).pack(side='left',padx=(0,S['4']))
+  tk.Button(left,text='Обработать очередь',bg=pal['accent_btn'],fg='#ffffff',font=F['ui_medium'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=18,pady=10,command=self.start).pack(side='left',padx=(0,S['2']))
+  tk.Button(left,text='Стоп',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=14,pady=10,command=self.stop).pack(side='left')
+  right=tk.Frame(bar,bg=pal['canvas']);right.pack(side='right')
+  tk.Label(right,text='Режим:',bg=pal['canvas'],fg=pal['muted'],font=F['small']).pack(side='left',padx=(0,S['2']))
+  self.mode=tk.StringVar(value={'short':'Короткая','long':'Длительная','photo':'Фото'}[self.cfg['mode']])
+  cb=ttk.Combobox(left,textvariable=self.mode,values=['Короткая','Длительная','Фото'],state='readonly',width=12,font=F['ui'])
+  cb.pack(side='left',padx=(0,S['4']));cb.bind('<<ComboboxSelected>>',lambda e:self.active_cfg())
+  tk.Label(right,text='Профиль:',bg=pal['canvas'],fg=pal['muted'],font=F['small']).pack(side='left',padx=(S['4'],S['2']))
+  self.profile=tk.StringVar(value=self.cfg['profile'])
+  cb2=ttk.Combobox(left,textvariable=self.profile,values=list(PROFILES),state='readonly',width=10,font=F['ui'])
+  cb2.pack(side='left');cb2.bind('<<ComboboxSelected>>',lambda e:self.active_cfg())
+  tk.Button(left,text='Авто',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=12,pady=8,command=self.auto).pack(side='left',padx=(S['4'],0))
+  # --- Фильтры ---
+  filters=tk.Frame(content,bg=pal['canvas']);filters.pack(fill='x',padx=S['6'],pady=(0,S['4']))
+  search_wrap=tk.Frame(filters,bg=pal['surface'],highlightbackground=pal['border'],highlightthickness=1,bd=0)
+  search_wrap.pack(side='left',fill='x',expand=True,padx=(0,S['4']))
+  tk.Label(search_wrap,text='🔍',bg=pal['surface'],fg=pal['muted']).pack(side='left',padx=(S['3'],0),pady=S['2'])
+  self.search=tk.StringVar();entry=tk.Entry(search_wrap,textvariable=self.search,bg=pal['surface'],fg=pal['ink'],
+    bd=0,highlightthickness=0,font=F['ui']);entry.pack(side='left',fill='x',expand=True,padx=(0,S['3']),pady=S['2'])
+  entry.bind('<Return>',lambda e:self.find())
+  tk.Button(filters,text='Найти',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=14,pady=8,command=self.find).pack(side='left',padx=(0,S['2']))
+  self.state=tk.StringVar(value='Все статусы');self.filter_mode=tk.StringVar(value='Все сессии')
+  statebox=ttk.Combobox(filters,textvariable=self.state,values=['Все статусы']+list(LABELS.values()),state='readonly',width=16,font=F['ui'])
+  statebox.pack(side='left',padx=(0,S['2']));statebox.bind('<<ComboboxSelected>>',lambda e:self.find())
+  mb=ttk.Combobox(filters,textvariable=self.filter_mode,values=['Все сессии','Короткая','Длительная'],state='readonly',width=14,font=F['ui'])
+  mb.pack(side='left',padx=(0,S['2']));mb.bind('<<ComboboxSelected>>',lambda e:self.find())
+  tk.Button(filters,text='Сброс',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=12,pady=8,command=self.clear_filter).pack(side='left')
+  # --- Таблица задач ---
+  table_wrap=make_card(content);table_wrap.pack(fill='both',expand=True,padx=S['6'],pady=(0,S['4']))
+  table_inner=tk.Frame(table_wrap,bg=pal['surface']);table_inner.pack(fill='both',expand=True,padx=S['3'],pady=S['3'])
   cols=('name','mode','state','number','market','cursor','duration','hit_count','path')
-  self.tree=ttk.Treeview(table,columns=cols,show='headings',selectmode='extended')
+  self.tree=ttk.Treeview(table_inner,columns=cols,show='headings',selectmode='extended')
   labels=['Файл','Сессия','Статус','Номер','Маркетплейс','Пройдено','Длительность','Этикеток','Путь к файлу']
-  widths=[210,100,140,200,120,100,100,80,380]
+  widths=[230,90,110,190,110,100,90,70,340]
   for col,label,width in zip(cols,labels,widths):
-   self.tree.heading(col,text=label,command=lambda c=col:self.sort_by(c));self.tree.column(col,width=width,minwidth=65,stretch=col in ('name','path'))
-  vs=ttk.Scrollbar(table,orient='vertical',command=self.tree.yview);hs=ttk.Scrollbar(table,orient='horizontal',command=self.tree.xview);self.tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
-  self.tree.grid(row=0,column=0,sticky='nsew');vs.grid(row=0,column=1,sticky='ns');hs.grid(row=1,column=0,sticky='ew');table.rowconfigure(0,weight=1);table.columnconfigure(0,weight=1)
-  for tag,color in state_tag_colors(self.theme_mode).items():self.tree.tag_configure(tag,background=color)
-  self.tree.bind('<Double-1>',self.double_click);self.tree.bind('<Control-c>',lambda e:self.copy_rows());self.tree.bind('<Control-C>',lambda e:self.copy_rows());self.tree.bind('<Control-a>',self.select_all);self.tree.bind('<Control-A>',self.select_all);self.tree.bind('<Button-3>',self.context);self.tree.bind('<<TreeviewSelect>>',lambda e:self.selection_changed())
-  nav=ttk.Frame(frame);nav.pack(fill='x',pady=5);ttk.Button(nav,text='←',command=lambda:self.change_page(-1)).pack(side='left');self.page_label=tk.StringVar();ttk.Label(nav,textvariable=self.page_label).pack(side='left',padx=8);ttk.Button(nav,text='→',command=lambda:self.change_page(1)).pack(side='left')
-  self.selected_label=tk.StringVar();ttk.Label(nav,textvariable=self.selected_label).pack(side='left',padx=15);ttk.Button(nav,text='Выделить страницу',command=self.select_all).pack(side='left')
-  self.path_value=tk.StringVar();pathbar=ttk.Frame(frame);pathbar.pack(fill='x');ttk.Label(pathbar,text='Путь:').pack(side='left');pathentry=ttk.Entry(pathbar,textvariable=self.path_value,state='readonly');pathentry.pack(side='left',fill='x',expand=True,padx=4)
-  ttk.Button(pathbar,text='К файлу',command=self.reveal).pack(side='left');ttk.Button(pathbar,text='Копировать путь',command=self.copy_paths).pack(side='left',padx=3);ttk.Button(pathbar,text='Копировать файл',command=self.copy_selected_files).pack(side='left')
-  self.status=tk.StringVar(value='Готово');ttk.Label(frame,textvariable=self.status).pack(fill='x',pady=4)
-  self.log=tk.Text(frame,height=5,wrap='word',state='disabled',bg=pal['surface'],fg=pal['ink'],insertbackground=pal['ink'],borderwidth=1,relief='solid',highlightthickness=0);self.log.pack(fill='x')
+   self.tree.heading(col,text=label,command=lambda c=col:self.sort_by(c))
+   self.tree.column(col,width=width,minwidth=65,stretch=col in ('name','path'))
+  vs=ttk.Scrollbar(table_inner,orient='vertical',command=self.tree.yview);hs=ttk.Scrollbar(table_inner,orient='horizontal',command=self.tree.xview)
+  self.tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
+  self.tree.grid(row=0,column=0,sticky='nsew');vs.grid(row=0,column=1,sticky='ns');hs.grid(row=1,column=0,sticky='ew')
+  table_inner.rowconfigure(0,weight=1);table_inner.columnconfigure(0,weight=1)
+  for tag in STATE_THEME:self.tree.tag_configure(tag,background=STATE_THEME[tag][2])
+  self.tree.bind('<Double-1>',self.double_click);self.tree.bind('<Control-c>',lambda e:self.copy_rows());self.tree.bind('<Control-C>',lambda e:self.copy_rows())
+  self.tree.bind('<Control-a>',self.select_all);self.tree.bind('<Control-A>',self.select_all);self.tree.bind('<Button-3>',self.context)
+  self.tree.bind('<<TreeviewSelect>>',lambda e:self.selection_changed())
+  # --- Нижняя панель ---
+  bottom=tk.Frame(content,bg=pal['canvas']);bottom.pack(fill='x',padx=S['6'],pady=(0,S['6']))
+  nav=tk.Frame(bottom,bg=pal['canvas']);nav.pack(side='left')
+  tk.Button(nav,text='←',bg=pal['surface'],fg=pal['ink'],font=F['ui'],bd=1,highlightbackground=pal['border'],
+            highlightthickness=1,cursor='hand2',padx=10,pady=6,command=lambda:self.change_page(-1)).pack(side='left')
+  self.page_label=tk.StringVar();tk.Label(nav,textvariable=self.page_label,bg=pal['canvas'],fg=pal['muted'],font=F['ui']).pack(side='left',padx=S['3'])
+  tk.Button(nav,text='→',bg=pal['surface'],fg=pal['ink'],font=F['ui'],bd=1,highlightbackground=pal['border'],
+            highlightthickness=1,cursor='hand2',padx=10,pady=6,command=lambda:self.change_page(1)).pack(side='left',padx=(S['3'],0))
+  tk.Button(nav,text='Выделить страницу',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=10,pady=6,command=self.select_all).pack(side='left',padx=(S['4'],0))
+  self.selected_label=tk.StringVar();tk.Label(nav,textvariable=self.selected_label,bg=pal['canvas'],fg=pal['muted'],font=F['ui']).pack(side='left',padx=(S['6'],0))
+  # Путь к файлу
+  pathbar=tk.Frame(bottom,bg=pal['canvas']);pathbar.pack(side='right')
+  self.path_value=tk.StringVar();pathentry=tk.Entry(pathbar,textvariable=self.path_value,state='readonly',bg=pal['surface'],fg=pal['ink'],
+    font=F['mono'],bd=1,highlightbackground=pal['border'],highlightthickness=1)
+  pathentry.pack(side='left',padx=(0,S['3']))
+  tk.Button(pathbar,text='К файлу',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=10,pady=6,command=self.reveal).pack(side='left',padx=(0,S['2']))
+  tk.Button(pathbar,text='Копировать путь',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=10,pady=6,command=self.copy_paths).pack(side='left',padx=(0,S['2']))
+  tk.Button(pathbar,text='Копировать файл',bg=pal['neutral_bg'],fg=pal['neutral_text'],font=F['ui'],bd=0,
+            highlightthickness=0,cursor='hand2',padx=10,pady=6,command=self.copy_selected_files).pack(side='left')
+  # Статус и лог
+  self.status=tk.StringVar(value='Готово');tk.Label(content,textvariable=self.status,bg=pal['canvas'],fg=pal['muted'],font=F['small']).pack(fill='x',padx=S['6'],pady=(0,S['2']))
+  self.log=tk.Text(content,height=5,wrap='word',state='disabled',bg=pal['surface'],fg=pal['ink'],insertbackground=pal['ink'],
+                   bd=1,highlightbackground=pal['border'],highlightthickness=1);self.log.pack(fill='x',padx=S['6'],pady=(0,S['6']))
+ def _nav_switch(self,key):
+  self.nav_active.set(key)
+  for k,btn in self.nav_buttons.items():
+   if k==key:
+    btn.configure(bg=self.theme['palette']['accent_soft'],fg=self.theme['palette']['accent_text'])
+   else:
+    btn.configure(bg=self.theme['palette']['surface'],fg=self.theme['palette']['muted'])
+ def _toggle_theme(self):
+  order=['light','dark','auto'];cur=self.theme_mode;nxt=order[(order.index(cur)+1)%len(order)]
+  self.theme_mode=nxt;self.theme=apply_theme(self.root,nxt)
+  pal=self.theme['palette'];self.theme_btn.configure(text='Тема: '+THEME_LABELS[nxt])
+  self.refresh()
  def active_cfg(self):
   self.cfg['profile']=self.profile.get();self.cfg['mode']={'Короткая':'short','Длительная':'long','Фото':'photo'}[self.mode.get()];atomic_json(data_dir()/'settings-v2.json',self.cfg);return worker_config(self.cfg)
  def auto(self):
@@ -185,10 +283,18 @@ class Application:
   rows,total=self.store.page(search=self.search.get(),state=state,mode=mode,sort=self.sort,descending=self.desc,page=self.page)
   if not rows and self.page and total:self.page=max(0,(total-1)//200);return self.refresh()
   self.total=total;self.rows={r['id']:r for r in rows};self.tree.delete(*self.tree.get_children())
+  counts={'total':0,'pending':0,'done':0,'errors':0}
   for r in rows:
-   self.tree.insert('',tk.END,iid=r['id'],values=(r['name'],'Короткая' if r['mode']=='short' else 'Длительная',LABELS.get(r['state'],r['state']),r['number'] or ('См. индекс' if r['mode']=='long' else ''),r['market'],stamp(r['cursor']),stamp(r['duration']),r['hit_count'],r['path']),tags=(r['state'],))
+   counts['total']+=1;st=r['state']
+   if st in ('pending','running','review','partial','accepted'):counts['pending']+=1
+   if st in ('done',):counts['done']+=1
+   if st in ('error',):counts['errors']+=1
+   self.tree.insert('',tk.END,iid=r['id'],values=(r['name'],'Короткая' if r['mode']=='short' else 'Длительная',LABELS.get(r['state'],r['state']),r['number'] or ('См. индекс' if r['mode']=='long' else ''),r['market'],stamp(r['cursor']),stamp(r['duration']),r['hit_count'],r['path']),tags=(st,))
   for key in keep&self.rows.keys():self.tree.selection_add(key)
   self.page_label.set(f'Страница {self.page+1} / {max(1,(total+199)//200)} · файлов {total}');self.selection_changed();self.last_refresh=time.monotonic()
+  pal=self.theme['palette']
+  for key,label in [('total','Всего файлов'),('pending','В очереди'),('done','Готово'),('errors','Ошибки')]:
+   card=self.stat_cards[key];card.winfo_children()[0].configure(text=str(counts[key]))
  def selection_changed(self):
   selected=self.selected();self.selected_label.set(f'Выбрано: {len(selected)}');self.path_value.set(self.rows[selected[0]]['path'] if selected else '')
  def select_all(self,event=None):self.tree.selection_set(self.tree.get_children());return 'break'
