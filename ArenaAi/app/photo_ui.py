@@ -1,5 +1,6 @@
 """Окно режима «Фото»: группировка фотографий по разделителям и копирование/перенос."""
 import os
+import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
@@ -13,14 +14,17 @@ from platform_ui import icon, open_path
 
 
 class PhotoWindow:
-    def __init__(self, parent):
+    def __init__(self, parent, theme=None):
         self.parent = parent
+        self.theme = theme or {'palette': {'surface': '#ffffff', 'surface_alt': '#f8fafc', 'ink': '#0f172a', 'muted': '#475569', 'accent': '#2563eb', 'accent_soft': '#eef2ff'}}
+        self.palette = self.theme['palette']
         self.win = tk.Toplevel(parent)
         icon(self.win)
         self.win.title('SHIRA — фото: группировка по товарам')
         self.win.geometry('1200x820')
         self.win.minsize(900, 600)
         self.win.resizable(True, True)
+        self.win.configure(bg=self.palette['surface_alt'])
         self.win.protocol('WM_DELETE_WINDOW', self.close)
         self.files = []
         self.classifications = {}
@@ -47,7 +51,10 @@ class PhotoWindow:
         list_frame = ttk.Frame(frame)
         list_frame.pack(fill='both', expand=True, pady=(0, 6))
         ttk.Label(list_frame, text='Фото для группировки (порядок — естественный по имени файла):').pack(anchor='w')
-        self.listbox = tk.Listbox(list_frame, selectmode='extended', height=6)
+        self.listbox = tk.Listbox(list_frame, selectmode='extended', height=6,
+            bg=self.palette['surface'], fg=self.palette['ink'],
+            selectbackground=self.palette['accent_soft'], selectforeground=self.palette['ink'],
+            borderwidth=1, relief='solid', highlightthickness=0)
         vs = ttk.Scrollbar(list_frame, orient='vertical', command=self.listbox.yview)
         self.listbox.configure(yscrollcommand=vs.set)
         self.listbox.pack(side='left', fill='both', expand=True)
@@ -84,7 +91,9 @@ class PhotoWindow:
         self.progress = ttk.Progressbar(run_frame, mode='determinate')
         self.progress.pack(side='right', fill='x', expand=True, padx=8)
 
-        self.log = tk.Text(frame, height=7, wrap='word', state='disabled')
+        self.log = tk.Text(frame, height=7, wrap='word', state='disabled',
+            bg=self.palette['surface'], fg=self.palette['ink'], insertbackground=self.palette['ink'],
+            borderwidth=1, relief='solid', highlightthickness=0)
         self.log.pack(fill='both', expand=True, pady=(0, 0))
         self.status = tk.StringVar(value='Готово')
         ttk.Label(frame, textvariable=self.status).pack(anchor='e')
