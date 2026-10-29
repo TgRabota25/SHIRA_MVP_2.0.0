@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHIRA — презентация для инвесторов (MVP 2.0.0)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #0f172a; background: #f8fafc; overflow: hidden; }
+  .deck { width: 100vw; height: 100vh; position: relative; }
+  .slide { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; display: none; align-items: center; justify-content: center; padding: 48px 64px; box-sizing: border-box; }
+  .slide.active { display: flex; flex-direction: column; }
+  .nav { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 100; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; cursor: pointer; border: none; }
+  .dot.active { background: #1e3a8a; }
+  .progress { position: fixed; top: 0; left: 0; height: 4px; background: #e2e8f0; z-index: 99; }
+  .progress-bar { height: 100%; background: #1e3a8a; width: 0%; transition: width 0.3s; }
+  .kicker { font-size: 13px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #2563eb; margin-bottom: 10px; }
+  h1, h2 { color: #1e3a8a; }
+  h1 { font-size: 42px; line-height: 1.15; }
+  h2 { font-size: 28px; margin-bottom: 16px; }
+  p.lead { font-size: 18px; color: #475569; max-width: 700px; line-height: 1.5; margin: 14px 0 24px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .brand img { width: 40px; height: 40px; border-radius: 10px; background: #fff; padding: 3px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; width: 100%; max-width: 960px; margin-top: 24px; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px 18px; text-align: center; box-shadow: 0 4px 12px rgba(15,23,42,0.08); }
+  .card .big { font-size: 40px; font-weight: 800; color: #2563eb; line-height: 1; }
+  .card h4 { font-size: 15px; margin: 12px 0 6px; color: #0f172a; }
+  .card p { font-size: 13px; color: #475569; line-height: 1.45; }
+  .two-col { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px; }
+  .col { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(15,23,42,0.08); }
+  .col h4 { font-size: 16px; color: #1e3a8a; margin-bottom: 10px; }
+  .col ul { padding-left: 20px; color: #475569; font-size: 14px; line-height: 1.6; }
+  .col ul li { margin-bottom: 8px; }
+  .footer-note { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); font-size: 12px; color: #64748b; text-align: center; max-width: 800px; }
+  .btn { display: inline-block; background: #1e3a8a; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; margin-top: 10px; }
+  .btn:hover { background: #1e40af; }
+  .hero-img { margin-top: 24px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+  .small { font-size: 13px; color: #64748b; }
+  /* Print to PDF */
+  @media print {
+    body { overflow: visible; background: #fff; }
+    .deck { height: auto; position: static; }
+    .slide { position: relative; height: auto; display: block; page-break-after: always; padding: 0; }
+    .slide.active { display: block; }
+    .nav, .progress, .footer-note { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress-bar" id="pb"></div></div>
+
+<div class="deck">
+  <!-- Слайд 1: Титул -->
+  <div class="slide active" id="s1">
+    <div class="brand"><img src="images/logo_inv.png" alt="SHIRA"><span style="font-weight:800;font-size:22px">SHIRA</span></div>
+    <div class="kicker">Презентация для инвесторов • MVP 2.0.0</div>
+    <h1>Учёт этикеток и видеоархива<br>без интернета и без облаков</h1>
+    <p class="lead">Локальная программа для Windows, которая индексирует видео, находит этикетки с QR‑кодами и штрихкодами, помогает проверить номера и экспортировать результат в CSV/XLSX.</p>
+    <img src="images/hero_inv.png" alt="Концепт" class="hero-img" style="max-width:700px">
+    <div class="footer-note">Демо-материалы не содержат реальных клиентских данных. Точность распознавания не 100 %.</div>
+  </div>
+
+  <!-- Слайд 2: Проблема -->
+  <div class="slide" id="s2">
+    <div class="kicker">Рынок и боль</div>
+    <h2>С чем сталкиваются склады и службы упаковки</h2>
+    <p class="lead">Нужно соотносить видеозаписи с этикетками товаров, находить конкретный идентификатор по таймкоду в часах записи и подтверждать результат вручную. Сегодня это делается вслепую или вручную — долго и с ошибками.</p>
+    <div class="two-col">
+      <div class="col">
+        <h4>Без SHIRA</h4>
+        <ul>
+          <li>Поиск номера в видео — вручную, по таймкодам.</li>
+          <li>Нет привязки этикетки к кадру.</li>
+          <li>Ручной перенос данных в таблицы.</li>
+          <li>Риск ошибок и потери номера.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4>С SHIRA</h4>
+        <ul>
+          <li>Автоматический поиск этикеток на кадрах.</li>
+          <li>Таймкод каждого появления номера.</li>
+          <li>Ручная проверка перед экспортом.</li>
+          <li>Экспорт в CSV/XLSX и бэкап базы.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-note">MVP‑версия. Ограничения: точность не 100 %, требуется ручная проверка.</div>
+  </div>
+
+  <!-- Слайд 3: Решение -->
+  <div class="slide" id="s3">
+    <div class="kicker">Продукт</div>
+    <h2>Что делает SHIRA</h2>
+    <p class="lead">Программа для рабочего стола под Windows 10/11 x64. Работает полностью офлайн — данные не покидают компьютер пользователя, что критично для конфиденциальных производственных материалов.</p>
+    <div class="grid-3">
+      <div class="card"><div class="big">🎞</div><h4>Видеоархив</h4><p>Индексация видео, выбор кадров, привязка этикеток к таймкоду.</p></div>
+      <div class="card"><div class="big">🔍</div><h4>Распознавание</h4><p>QR‑коды и штрихкоды, OCR, поиск идентификаторов.</p></div>
+      <div class="card"><div class="big">💾</div><h4>Проверка и экспорт</h4><p>Очередь проверки, CSV/XLSX, резервное копирование БД.</p></div>
+    </div>
+    <div class="footer-note">Иллюстрации — концепт, не скриншоты рабочей программы.</div>
+  </div>
+
+  <!-- Слайд 4: Режимы -->
+  <div class="slide" id="s4">
+    <div class="kicker">Три режима работы</div>
+    <h2>Под разные задачи</h2>
+    <div class="grid-3">
+      <div class="card"><div class="big">1</div><h4>Короткая (&lt; 3600 с)</h4><p>Равномерная выборка кадров и ручное подтверждение кандидатов.</p></div>
+      <div class="card"><div class="big">2</div><h4>Длительная (≥ 3600 с)</h4><p>Интервальное индексирование, таймкоды, сводка наблюдений.</p></div>
+      <div class="card"><div class="big">3</div><h4>Фото</h4><p>Группировка по разделителям A/B, копирование/перенос с проверкой SHA‑256.</p></div>
+    </div>
+    <p class="small" style="margin-top:20px">Все три режима реализованы в MVP 2.0.0. Режим «Фото» защищает от дублей и потерь через реестр операций.</p>
+    <div class="footer-note">Режимы выбираются в главном окне; профиль и шаг сохраняются на задание.</div>
+  </div>
+
+  <!-- Слайд 5: Преимущества -->
+  <div class="slide" id="s5">
+    <div class="kicker">Конкурентные преимущества</div>
+    <h2>Почему SHIRA</h2>
+    <div class="grid-3">
+      <div class="card"><div class="big">🔒</div><h4>Офлайн и конфиденциальность</h4><p>Никаких облачных серверов. Видео и данные остаются на компьютере заказчика.</p></div>
+      <div class="card"><div class="big">☑</div><h4>Проверка перед экспортом</h4><p>Ручное подтверждение номеров — нет слепого доверия автоматике.</p></div>
+      <div class="card"><div class="big">🛡</div><h4>Отказоустойчивость</h4><p>Контрольные точки, реестр операций, бэкап и импорт базы.</p></div>
+    </div>
+    <div class="footer-note">Автоматизация ручной работы без передачи данных третьим лицам.</div>
+  </div>
+
+  <!-- Слайд 6: Статус / следующий шаг -->
+  <div class="slide" id="s6">
+    <div class="kicker">Статус и следующие шаги</div>
+    <h2>MVP готов к пилотированию</div>
+    <p class="lead">Версия 2.0.0 собрана, прошла автоматическое тестирование (unittest), подготовлена документация и инсталлятор для Windows. Программа готова к демонстрации потенциальным пользователям на складах и в службах упаковки.</p>
+    <div class="two-col">
+      <div class="col">
+        <h4>Что готово</h4>
+        <ul>
+          <li>Три режима обработки видео и фото.</li>
+          <li>Графический интерфейс на русском языке.</li>
+          <li>CLI‑режим для пакетной обработки.</li>
+          <li>Экспорт CSV/XLSX, бэкап БД.</li>
+          <li>Инсталлятор 01_INSTALL.cmd (офлайн).</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h4>Дальше</h4>
+        <ul>
+          <li>Пилот на реальных объектах заказчика.</li>
+          <li>Сбор обратной связи и доработка точности.</li>
+          <li>Публичный релиз и документация для пользователей.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-note">Контакт и ссылка на релиз уточняются у владельца репозитория SHIRA_MVP_2.0.0.</div>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="dot active" onclick="show(1)" aria-label="Слайд 1"></button>
+  <button class="dot" onclick="show(2)" aria-label="Слайд 2"></button>
+  <button class="dot" onclick="show(3)" aria-label="Слайд 3"></button>
+  <button class="dot" onclick="show(4)" aria-label="Слайд 4"></button>
+  <button class="dot" onclick="show(5)" aria-label="Слайд 5"></button>
+  <button class="dot" onclick="show(6)" aria-label="Слайд 6"></button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.dot');
+  const pb = document.getElementById('pb');
+  function show(n){
+    slides.forEach(s=>s.classList.remove('active'));
+    dots.forEach((d,i)=>d.classList.toggle('active', i+1===n));
+    slides[n-1].classList.add('active');
+    pb.style.width = ((n-1)/(slides.length-1)*100) + '%';
+  }
+  document.addEventListener('keydown',(e)=>{
+    let cur = Array.from(dots).findIndex(d=>d.classList.contains('active'))+1;
+    if(e.key==='ArrowRight'||e.key===' ') show(Math.min(slides.length,cur+1));
+    if(e.key==='ArrowLeft') show(Math.max(1,cur-1));
+  });
+</script>
+</body>
+</html>

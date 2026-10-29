@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHIRA MVP 2.0.0 — Руководство пользователя</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.6; color: #0f172a; margin: 0; background: #f8fafc; }
+  .container { max-width: 900px; margin: 0 auto; padding: 32px 20px; }
+  header { background: #1e3a8a; color: #fff; padding: 32px 20px; border-radius: 12px 12px 0 0; }
+  header h1 { margin: 0 0 8px; font-size: 26px; }
+  header p { margin: 0; color: #cbd5e1; font-size: 15px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .brand img { width: 36px; height: 36px; border-radius: 8px; background: #fff; padding: 2px; }
+  h2 { font-size: 20px; margin: 30px 0 12px; color: #1e3a8a; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+  h3 { font-size: 17px; margin: 20px 0 8px; color: #0f172a; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 8px 0 16px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  .step { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 18px; margin: 16px 0; box-shadow: 0 2px 6px rgba(15,23,42,0.06); }
+  .step-num { display: inline-block; background: #1e3a8a; color: #fff; font-weight: 700; font-size: 14px; padding: 2px 10px; border-radius: 999px; margin-right: 10px; }
+  .imgwrap { margin: 14px 0; text-align: center; }
+  .imgwrap img { max-width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+  .caption { font-size: 13px; color: #475569; margin-top: 6px; }
+  .note { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 14px; color: #1e3a8a; }
+  .warn { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 14px; color: #b91c1c; }
+  .code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+  footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px; color: #475569; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 16px 0; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 2px 6px rgba(15,23,42,0.06); }
+  .card .num { font-size: 32px; font-weight: 700; color: #2563eb; line-height: 1; }
+  .card h4 { margin: 10px 0 6px; font-size: 15px; color: #0f172a; }
+  .card p { font-size: 13px; color: #475569; margin: 0; }
+  @media (max-width: 600px) { .container { padding: 16px 14px; } header { padding: 24px 14px; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="brand"><img src="images/logo.png" alt="Логотип SHIRA"><span style="font-weight:700;font-size:18px">SHIRA</span></div>
+    <h1>Руководство пользователя SHIRA MVP 2.0.0</h1>
+    <p>Локальная программа для Windows: учёт этикеток, поиск QR/штрихкодов на кадрах видео, проверка и экспорт результатов.</p>
+  </header>
+
+  <h2>1. Что такое SHIRA</h2>
+  <p>SHIRA — программа для рабочего стола под Windows 10/11 x64. Она помогает:</p>
+  <ul>
+    <li>индексировать видеофайлы и выбирать кадры для анализа;</li>
+    <li>находить этикетки с QR‑кодами и штрихкодами на кадрах;</li>
+    <li>считывать идентификаторы (номера заказов) и привязывать их к таймкоду;</li>
+    <li>вручную проверять найденные номера и экспортировать результат в CSV/XLSX;</li>
+    <li>группировать фотографии по служебным разделителям и копировать/переносить с проверкой целостности.</li>
+  </ul>
+  <p class="note"><strong>Важно:</strong> программа работает офлайн на вашем компьютере. Результат распознавания требует ручной проверки — точность не 100 %, особенно на размытых или закрытых этикетках.</p>
+
+  <h2>2. Установка и первый запуск</h2>
+  <p>Установка состоит из двух шагов и не требует подключения к интернету.</p>
+  <div class="step">
+    <span class="step-num">Шаг 1</span>Запустите <code class="code">01_INSTALL.cmd</code>. Программа установит среду выполнения, Python 3.13.16 и создаст виртуальное окружение. Лог сохраняется в <code class="code">%LOCALAPPDATA%\SHIRA_MVP\installation-v2.log</code>. Успешное завершение — <code class="code">exit 0</code> (SUCCESS).
+  </div>
+  <div class="step">
+    <span class="step-num">Шаг 2</span>Запустите <code class="code">02_START.cmd</code> — откроется главное окно программы.
+  </div>
+  <div class="imgwrap"><img src="images/install.png" alt="Этапы установки"><div class="caption">Рис. 1 — Два шага установки и запуска</div></div>
+
+  <h2>3. Главное окно и режимы работы</h2>
+  <p>В верхней панели выберите режим обработки. Профиль и шаг сохраняются для каждого задания отдельно.</p>
+  <div class="grid-3">
+    <div class="card"><div class="num">1</div><h4>Короткая сессия</h4><p>Видео &lt; 3600 с. Равномерная выборка кадров, поиск кандидатов, ручное подтверждение.</p></div>
+    <div class="card"><div class="num">2</div><h4>Длительная сессия</h4><p>Видео ≥ 3600 с. Интервальное индексирование, таймкоды, сводка наблюдений, извлечение кадра.</p></div>
+    <div class="card"><div class="num">3</div><h4>Фото</h4><p>Группировка снимков по разделителям A/B, парковка неопознанных, копирование/перенос с проверкой SHA‑256.</p></div>
+  </div>
+  <div class="imgwrap"><img src="images/modes.png" alt="Три режима"><div class="caption">Рис. 2 — Три режима работы: Короткая, Длительная, Фото</div></div>
+
+  <h2>4. Пошаговая работа с видео</h2>
+  <div class="step"><span class="step-num">1</span><strong>Добавьте файлы.</strong> Нажмите «Добавить файлы» или «Добавить папку», выберите видеофайлы.</div>
+  <div class="step"><span class="step-num">2</span><strong>Выберите режим и профиль.</strong> Укажите Короткую или Длительную сессию, настройте шаг кадра.</div>
+  <div class="step"><span class="step-num">3</span><strong>Запустите обработку.</strong> Нажмите «Обработать очередь». Программа analyseрует кадры с контрольными точками — при остановке прогресс сохраняется.</div>
+  <div class="step"><span class="step-num">4</span><strong>Проверьте результаты.</strong> Найденные идентификаторы попадают в очередь проверки с таймкодом. Подтвердите корректный номер или отправьте на повтор.</div>
+  <div class="step"><span class="step-num">5</span><strong>Экспортируйте.</strong> Сохраните подтверждённые данные в CSV или XLSX.</div>
+  <div class="imgwrap"><img src="images/add.png" alt="Добавление"><div class="caption">Рис. 3 — Добавление файлов и запуск очереди</div></div>
+  <div class="imgwrap"><img src="images/process.png" alt="Обработка"><div class="caption">Рис. 4 — Этапы обработки видео: кадры, поиск, таймкоды</div></div>
+
+  <h2>5. Проверка и подтверждение номеров</h2>
+  <p>Найденный идентификатор выводится на проверку с указанием таймкода и способа распознавания (QR / штрихкод / OCR). Оператор вручную подтверждает номер или отклоняет его.</p>
+  <div class="imgwrap"><img src="images/review.png" alt="Проверка"><div class="caption">Рис. 5 — Окно проверки: демо-номер и кнопка подтверждения</div></div>
+  <div class="warn"><strong>Ограничение:</strong> программа не гарантирует 100 % распознавание. Размытые, закрытые или посторонние этикетки могут быть прочитаны с ошибкой или не прочитаны вообще. Всегда сверяйте номер с источником.</div>
+
+  <h2>6. Работа с фотографиями (режим «Фото»)</h2>
+  <p>Добавьте папку со снимками. Программа распознаёт каждый фото и сортирует его:</p>
+  <ul>
+    <li>с текстом разделителя «A» — начинает группу А;</li>
+    <li>с текстом разделителя «B» — начинает группу B;</li>
+    <li>между разделителями накапливаются обычные фото;</li>
+    <li>до первого разделителя и неясные снимки уходят в «Парковку».</li>
+  </ul>
+  <p>После классификации просмотрите группы и нажмите «Копировать» или «Перенести». Каждый файл проверяется по SHA‑256 после копирования; при переносе источник удаляется только после подтверждённой копии. Все операции записываются в реестр <code class="code">photo-v2.sqlite3</code> — после сбоя continuation идёт без дублей и потерь.</p>
+
+  <h2>7. Экспорт результатов и бэкап базы</h2>
+  <ul>
+    <li><strong>Экспорт:</strong> подтверждённые данные сохраняются в CSV или XLSX.</li>
+    <li><strong>Бэкап БД:</strong> создание резервной копии рабочей базы и импорт из неё.</li>
+    <li><strong>Проверка整体性:</strong> <code class="code">06_VERIFY.cmd</code> сверяет все файлы выпуска с <code class="code">SHA256SUMS.txt</code>.</li>
+  </ul>
+  <div class="imgwrap"><img src="images/export.png" alt="Экспорт"><div class="caption">Рис. 6 — Экспорт в CSV/XLSX и бэкап базы данных</div></div>
+
+  <h2>8. Пакетный режим (командная строка)</h2>
+  <p>Для обработки без графического окна используйте <code class="code">05_BATCH.cmd</code> (<code class="code">app/cli.py</code>):</p>
+  <div class="code">app\cli.py examples\ --mode short --profile default</div>
+  <div class="code">app\cli.py photos\ --mode photo --dest D:\Photos\Sorted --op copy</div>
+  <p>Параметры: <code class="code">--mode short|long|photo</code>, <code class="code">--profile</code>, <code class="code">--step</code>, <code class="code">--recursive</code>, <code class="code">--op copy|move</code> и другие.</p>
+
+  <h2>9. Анимированный обзор workflow</h2>
+  <div class="imgwrap">
+    <img src="workflow.gif" alt="Анимация workflow SHIRA" style="max-width:560px">
+    <div class="caption">Рис. 7 — Пять этапов работы с SHIRA (анимация)</div>
+  </div>
+
+  <h2>10. Ограничения</h2>
+  <div class="warn">
+    <ul>
+      <li>Целевая платформа — Windows 10/11 x64. Выполнение на целевой Windows в этой сборке не проверялось.</li>
+      <li>Реальное 8‑часовое видео пользователя не загружалось; точность на реальных материалах не измеряется.</li>
+      <li>Это не сертифицированная отказоустойчивая система.</li>
+      <li>Руководство не раскрывает внутренние алгоритмы, регулярные выражения, схемы анализа и структуры баз.</li>
+    </ul>
+  </div>
+
+  <footer>
+    SHIRA MVP 2.0.0 — руководство пользователя. Демо-данные на иллюстрациях не являются реальными клиентскими данными.
+  </footer>
+</div>
+</body>
+</html>
