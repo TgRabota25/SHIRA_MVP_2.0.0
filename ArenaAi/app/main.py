@@ -10,9 +10,10 @@ from platform_ui import app_identity,icon,open_path,copy_files
 from imageview import brand_icon,Rotations,render_image
 from photo_ui import PhotoWindow
 
-def make_scrollable(parent,padding=15):
+def make_scrollable(parent,padding=15,bg=None):
  frame=ttk.Frame(parent);frame.pack(fill='both',expand=True)
  canvas=tk.Canvas(frame,highlightthickness=0);scroll=ttk.Scrollbar(frame,orient='vertical',command=canvas.yview)
+ if bg:canvas.configure(bg=bg)
  canvas.configure(yscrollcommand=scroll.set);scroll.pack(side='right',fill='y');canvas.pack(side='left',fill='both',expand=True)
  inner=ttk.Frame(canvas,padding=padding);window=canvas.create_window((0,0),window=inner,anchor='nw')
  inner.bind('<Configure>',lambda e:canvas.configure(scrollregion=canvas.bbox('all')))
@@ -125,7 +126,7 @@ class Application:
  def open_photo_window(self,paths=None):
   if getattr(self,'photo_window',None) and self.photo_window.win.winfo_exists():
    self.photo_window.win.focus_set();return
-  self.photo_window=PhotoWindow(self.root)
+  self.photo_window=PhotoWindow(self.root,theme=self.theme)
   if paths:
    self.photo_window.files=[Path(p) for p in paths if Path(p).suffix.lower() in EXTENSIONS]
    self.photo_window.count()
@@ -267,7 +268,7 @@ class Application:
   self.safe_open(path)
  def preferences(self):
   win=tk.Toplevel(self.root);icon(win);win.title('Настройки новых заданий');win.geometry('980x900');win.minsize(860,560);win.resizable(True,True);self.bind_copy(win);center_window(win)
-  canvas,frame=make_scrollable(win)
+  canvas,frame=make_scrollable(win,bg=self.theme['palette']['surface_alt'])
   ttk.Label(frame,text='Изменения применяются к новым заданиям. Уже добавленные используют сохранённые настройки.').pack(anchor='w')
   ttk.Label(frame,text='Тема оформления:').pack(anchor='w',pady=(10,0));theme_var=tk.StringVar(value=self.cfg.get('theme',DEFAULT_THEME));ttk.Combobox(frame,textvariable=theme_var,values=['light','dark','auto'],state='readonly',width=12).pack(anchor='w')
   ttk.Label(frame,text='Шаг поиска QR в длинном видео, секунд (0.1–60):').pack(anchor='w',pady=(10,0));step=tk.StringVar(value=str(self.cfg['long_step']));ttk.Entry(frame,textvariable=step).pack(fill='x')
@@ -282,7 +283,7 @@ class Application:
   ttk.Label(box,text='Кадров с OCR текста этикетки (0 или 1–120):').grid(row=1,column=0,sticky='w');ttk.Entry(box,textvariable=so,width=8).grid(row=1,column=1,padx=6,pady=2)
   ttk.Label(box,text='Сканировать с секунды (0 = с начала видео):').grid(row=2,column=0,sticky='w');ttk.Entry(box,textvariable=ws,width=8).grid(row=2,column=1,padx=6,pady=2)
   ttk.Label(box,text='Сканировать до секунды (0 = до конца видео):').grid(row=3,column=0,sticky='w');ttk.Entry(box,textvariable=we,width=8).grid(row=3,column=1,padx=6,pady=2)
-  ttk.Label(box,text='Кадры равномерно распределяются внутри этого промежутка; хвост видео (~0.15 с) всегда отбрасывается.',foreground='#666').grid(row=4,column=0,columnspan=2,sticky='w')
+  ttk.Label(box,text='Кадры равномерно распределяются внутри этого промежутка; хвост видео (~0.15 с) всегда отбрасывается.',foreground=self.theme['palette']['muted']).grid(row=4,column=0,columnspan=2,sticky='w')
   ttk.Checkbutton(box,text='Если трек не найден — второй проход по промежуточным кадрам (медленнее, надёжнее)',variable=sp).grid(row=5,column=0,columnspan=2,sticky='w')
   ttk.Checkbutton(box,text='Если QR найден, а трека в нём нет — дочитывать текст этикетки (OCR)',variable=fb).grid(row=6,column=0,columnspan=2,sticky='w')
   ttk.Label(box,text='Максимум таких дополнительных кадров с OCR на видео (0–60):').grid(row=7,column=0,sticky='w');ttk.Entry(box,textvariable=fm,width=8).grid(row=7,column=1,padx=6,pady=2)
@@ -290,7 +291,7 @@ class Application:
   ttk.Checkbutton(box,text='Распознавать номера 10-4-1 с типичными ошибками OCR (О/0, l/1; такие номера идут на проверку)',variable=fz).grid(row=9,column=0,columnspan=2,sticky='w')
   ttk.Button(box,text='Открыть отчёт сканирования (scan-v2.log)',command=self.scan_report).grid(row=10,column=0,columnspan=2,sticky='w',pady=(6,0))
   ttk.Label(frame,text='Шаблоны JSON (regex, name, market).').pack(anchor='w',pady=(10,0))
-  text=tk.Text(frame,height=12,wrap='word');text.pack(fill='both',expand=True);text.insert('1.0',json.dumps(self.cfg['patterns'],ensure_ascii=False,indent=2))
+  text=tk.Text(frame,height=12,wrap='word',bg=self.theme['palette']['surface'],fg=self.theme['palette']['ink'],insertbackground=self.theme['palette']['ink']);text.pack(fill='both',expand=True);text.insert('1.0',json.dumps(self.cfg['patterns'],ensure_ascii=False,indent=2))
   def save():
    try:
     s=float(step.get());n=int(every.get());p=json.loads(text.get('1.0','end'))
@@ -341,6 +342,7 @@ class Application:
   key=keys[0];row=self.store.get(key)
   if row['mode']=='long':self.index(key);return
   win=tk.Toplevel(self.root);icon(win);win.title('Проверка: '+row['name']);win.geometry('1180x920');win.minsize(960,700);win.resizable(True,True);self.bind_copy(win);center_window(win)
+  pal=self.theme['palette']
   frame=ttk.Frame(win,padding=12);frame.pack(fill='both',expand=True)
   path=tk.StringVar(value=row['path']);ttk.Entry(frame,textvariable=path,state='readonly').pack(fill='x')
   buttons=ttk.Frame(frame);buttons.pack(fill='x',pady=5)
@@ -359,7 +361,7 @@ class Application:
   tools=ttk.Frame(frame);tools.pack(fill='x')
   for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(tools,text=label,command=lambda d=delta:turn(d)).pack(side='left',padx=2)
   ttk.Button(tools,text='Кадр крупно',command=lambda:FullImage(self,win,shown['path'],key)).pack(side='left',padx=8)
-  hits,total=self.store.hits(key);text=tk.Text(frame,height=5,wrap='word');text.pack(fill='x',pady=(8,0))
+  hits,total=self.store.hits(key);text=tk.Text(frame,height=5,wrap='word',bg=pal['surface'],fg=pal['ink'],insertbackground=pal['ink']);text.pack(fill='x',pady=(8,0))
   for hit in hits:text.insert('end',f"{hit['number']} · {hit['market']} · {stamp(hit['ts'])} · {hit['method']}\n")
   text.configure(state='disabled')
   if shown['path'] and Path(shown['path']).is_file():show()
@@ -384,8 +386,9 @@ class Application:
    label._photo=ImageTk.PhotoImage(im);label.configure(image=label._photo,text='')
   except Exception as exc:label.configure(text='Ошибка кадра: '+str(exc))
  def history(self,key):
+  pal=self.theme['palette']
   win=tk.Toplevel(self.root);icon(win);win.title('История и пропуски');win.geometry('980x700');win.minsize(760,520);win.resizable(True,True);self.bind_copy(win);center_window(win)
-  text=tk.Text(win,wrap='word');text.pack(fill='both',expand=True)
+  text=tk.Text(win,wrap='word',bg=pal['surface'],fg=pal['ink'],insertbackground=pal['ink']);text.pack(fill='both',expand=True)
   text.insert('end',json.dumps(dict(gaps=self.store.gaps(key),audit=self.store.history(key)),ensure_ascii=False,indent=2));text.configure(state='disabled')
  def index(self,key=None):
   IndexWindow(self,key)
@@ -410,7 +413,7 @@ class FullImage:
   for label,delta in [('↺ 90°',-90),('↻ 90°',90),('180°',180)]:ttk.Button(bar,text=label,command=lambda d=delta:self.turn(d)).pack(side='left',padx=2)
   ttk.Button(bar,text='Открыть во внешней программе',command=lambda:app.safe_open(self.path)).pack(side='left',padx=8)
   box=ttk.Frame(win);box.pack(fill='both',expand=True)
-  self.canvas=tk.Canvas(box,background='#222222',highlightthickness=0);vs=ttk.Scrollbar(box,orient='vertical',command=self.canvas.yview);hs=ttk.Scrollbar(box,orient='horizontal',command=self.canvas.xview)
+  self.canvas=tk.Canvas(box,background=self.app.theme['palette']['surface'],highlightthickness=0);vs=ttk.Scrollbar(box,orient='vertical',command=self.canvas.yview);hs=ttk.Scrollbar(box,orient='horizontal',command=self.canvas.xview)
   self.canvas.configure(yscrollcommand=vs.set,xscrollcommand=hs.set);self.canvas.grid(row=0,column=0,sticky='nsew');vs.grid(row=0,column=1,sticky='ns');hs.grid(row=1,column=0,sticky='ew');box.rowconfigure(0,weight=1);box.columnconfigure(0,weight=1)
   self.draw()
  def draw(self):
@@ -447,8 +450,9 @@ class IndexWindow:
   else:self.sort=col;self.desc=False
   self.page=0;self.refresh()
  def summary(self):
+  pal=self.app.theme['palette']
   rows=self.app.store.summary(self.key,self.query.get());win=tk.Toplevel(self.win);icon(win);win.title('Сводка: первые / последние наблюдения');win.geometry('1080x620');win.minsize(860,480);win.resizable(True,True);self.app.bind_copy(win);center_window(win)
-  text=tk.Text(win,wrap='none');text.pack(fill='both',expand=True)
+  text=tk.Text(win,wrap='none',bg=pal['surface'],fg=pal['ink'],insertbackground=pal['ink']);text.pack(fill='both',expand=True)
   text.insert('end','Номер\tПервое наблюдение\tПоследнее наблюдение\tКадров\tВидео\n')
   for r in rows:text.insert('end',f"{r['number']}\t{stamp(r['first_seen'])}\t{stamp(r['last_seen'])}\t{r['samples']}\t{r['path']}\n")
   text.insert('end','\nДо 200 групп на экране. Сводка не определяет количество посылок и точные границы появления. Для всех наблюдений используйте экспорт.');text.configure(state='disabled')
