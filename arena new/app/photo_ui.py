@@ -1,4 +1,6 @@
-"""Окно режима «Фото»: группировка фотографий по разделителям и копирование/перенос."""
+"""Окно режима «Фото»: группировка фотографий по разделителям и копирование/перенос.
+Современный визуал: карточки, акцентные кнопки, статус-бэджи, мягкие границы.
+"""
 import os
 import threading
 import tkinter as tk
@@ -11,20 +13,21 @@ from photo import (
     execute_plan, natural_key, split_groups,
 )
 from platform_ui import icon, open_path
+from theme import SPACE, stat_card
 
 
 class PhotoWindow:
     def __init__(self, parent, theme=None):
         self.parent = parent
-        self.theme = theme or {'palette': {'surface': '#ffffff', 'surface_alt': '#f8fafc', 'ink': '#0f172a', 'muted': '#475569', 'accent': '#2563eb', 'accent_soft': '#eef2ff'}}
+        self.theme = theme or {'palette': {'surface': '#ffffff', 'surface_alt': '#f3f4f6', 'ink': '#0f172a', 'muted': '#64748b', 'accent': '#2563eb', 'accent_soft': '#eef2ff', 'border': '#e2e8f0'}}
         self.palette = self.theme['palette']
         self.win = tk.Toplevel(parent)
         icon(self.win)
         self.win.title('SHIRA — фото: группировка по товарам')
-        self.win.geometry('1200x820')
-        self.win.minsize(900, 600)
+        self.win.geometry('1300x850')
+        self.win.minsize(1000, 650)
         self.win.resizable(True, True)
-        self.win.configure(bg=self.palette['surface_alt'])
+        self.win.configure(bg=self.palette['canvas'] if 'canvas' in self.palette else self.palette['surface_alt'])
         self.win.protocol('WM_DELETE_WINDOW', self.close)
         self.files = []
         self.classifications = {}
@@ -36,67 +39,129 @@ class PhotoWindow:
         self._build()
 
     def _build(self):
-        frame = ttk.Frame(self.win, padding=10)
-        frame.pack(fill='both', expand=True)
+        pal = self.palette
+        # Корневой контейнер
+        root = tk.Frame(self.win, bg=pal.get('canvas', pal['surface_alt']))
+        root.pack(fill='both', expand=True)
 
-        bar = ttk.Frame(frame)
-        bar.pack(fill='x', pady=(0, 6))
-        ttk.Button(bar, text='Добавить фото', command=self.add_files).pack(side='left')
-        ttk.Button(bar, text='Добавить папку', command=self.add_folder).pack(side='left', padx=4)
-        ttk.Button(bar, text='Удалить выбранное', command=self.remove_selected).pack(side='left', padx=4)
-        ttk.Button(bar, text='Очистить список', command=self.clear_files).pack(side='left', padx=4)
-        ttk.Button(bar, text='Классифицировать', command=self.classify).pack(side='left', padx=12)
-        ttk.Button(bar, text='Обновить группировку', command=self.refresh_preview).pack(side='left')
+        # Шапка окна
+        header = tk.Frame(root, bg=pal.get('canvas', pal['surface_alt']), height=56)
+        header.pack(fill='x')
+        header.pack_propagate(False)
+        tk.Label(header, text='SHIRA • Фото', bg=pal.get('canvas', pal['surface_alt']),
+                 fg=pal['ink'], font=('Segoe UI', 14, 'bold')).pack(side='left', padx=SPACE['4'], pady=14)
 
-        list_frame = ttk.Frame(frame)
-        list_frame.pack(fill='both', expand=True, pady=(0, 6))
-        ttk.Label(list_frame, text='Фото для группировки (порядок — естественный по имени файла):').pack(anchor='w')
-        self.listbox = tk.Listbox(list_frame, selectmode='extended', height=6,
-            bg=self.palette['surface'], fg=self.palette['ink'],
-            selectbackground=self.palette['accent_soft'], selectforeground=self.palette['ink'],
-            borderwidth=1, relief='solid', highlightthickness=0)
-        vs = ttk.Scrollbar(list_frame, orient='vertical', command=self.listbox.yview)
+        # Тело: слева список, справа группы
+        body = tk.Frame(root, bg=pal.get('canvas', pal['surface_alt']))
+        body.pack(fill='both', expand=True, padx=SPACE['4'], pady=SPACE['4'])
+
+        # --- Левая колонка: список файлов ---
+        left = tk.Frame(body, bg=pal.get('canvas', pal['surface_alt']))
+        left.pack(side='left', fill='both', expand=True, padx=(0, SPACE['3']))
+
+        # Верхняя панель действий
+        bar = tk.Frame(left, bg=pal.get('canvas', pal['surface_alt']))
+        bar.pack(fill='x', pady=(0, SPACE['3']))
+        btn_conf = dict(bg=pal['surface'], fg=pal['ink'], font=('Segoe UI', 10), bd=1,
+                        highlightbackground=pal['border'], highlightthickness=1,
+                        cursor='hand2', padx=12, pady=8)
+        tk.Button(bar, text='Добавить фото', command=self.add_files, **btn_conf).pack(side='left', padx=(0, SPACE['2']))
+        tk.Button(bar, text='Добавить папку', command=self.add_folder, **btn_conf).pack(side='left', padx=(0, SPACE['2']))
+        tk.Button(bar, text='Удалить выбранное', command=self.remove_selected, **btn_conf).pack(side='left', padx=(0, SPACE['2']))
+        tk.Button(bar, text='Очистить список', command=self.clear_files, **btn_conf).pack(side='left', padx=(0, SPACE['4']))
+        tk.Button(bar, text='Классифицировать', command=self.classify, bg=pal['accent_btn'], fg='#ffffff',
+                  font=('Segoe UI', 10, 'bold'), bd=0, highlightthickness=0, cursor='hand2',
+                  padx=16, pady=8).pack(side='left')
+
+        # Карточка со списком
+        list_card = tk.Frame(left, bg=pal['surface'], highlightbackground=pal['border'], highlightthickness=1, bd=0)
+        list_card.pack(fill='both', expand=True)
+        list_inner = tk.Frame(list_card, bg=pal['surface'])
+        list_inner.pack(fill='both', expand=True, padx=SPACE['3'], pady=SPACE['3'])
+        tk.Label(list_inner, text='Фото для группировки (порядок — естественный по имени файла)',
+                 bg=pal['surface'], fg=pal['muted'], font=('Segoe UI', 9, 'bold')).pack(anchor='w', pady=(0, SPACE['2']))
+        self.listbox = tk.Listbox(list_inner, selectmode='extended', height=8,
+            bg=pal['surface'], fg=pal['ink'], selectbackground=pal['accent_soft'],
+            selectforeground=pal['ink'], borderwidth=0, highlightthickness=0, font=('Segoe UI', 10))
+        self.listbox.pack(fill='both', expand=True)
+        vs = ttk.Scrollbar(list_inner, orient='vertical', command=self.listbox.yview)
         self.listbox.configure(yscrollcommand=vs.set)
-        self.listbox.pack(side='left', fill='both', expand=True)
         vs.pack(side='right', fill='y')
         self.count_var = tk.StringVar(value='файлов: 0')
-        ttk.Label(list_frame, textvariable=self.count_var).pack(anchor='e')
+        tk.Label(left, textvariable=self.count_var, bg=pal.get('canvas', pal['surface_alt']),
+                 fg=pal['muted'], font=('Segoe UI', 9)).pack(anchor='e', pady=(SPACE['1'], 0))
 
-        # preview of groups
-        prev = ttk.LabelFrame(frame, text='Группировка (после классификации)', padding=6)
-        prev.pack(fill='both', expand=True, pady=(0, 6))
+        # --- Правая колонка: группы и операции ---
+        right = tk.Frame(body, bg=pal.get('canvas', pal['surface_alt']), width=420)
+        right.pack(side='right', fill='y')
+        right.pack_propagate(False)
+
+        # Карточка группировки
+        group_card = tk.Frame(right, bg=pal['surface'], highlightbackground=pal['border'], highlightthickness=1, bd=0)
+        group_card.pack(fill='both', expand=True, pady=(0, SPACE['3']))
+        group_inner = tk.Frame(group_card, bg=pal['surface'])
+        group_inner.pack(fill='both', expand=True, padx=SPACE['3'], pady=SPACE['3'])
+        tk.Label(group_inner, text='Группировка (после классификации)',
+                 bg=pal['surface'], fg=pal['muted'], font=('Segoe UI', 9, 'bold')).pack(anchor='w', pady=(0, SPACE['2']))
         cols = ('group', 'kind', 'separator', 'items')
-        self.tree = ttk.Treeview(prev, columns=cols, show='headings', height=6, selectmode='none')
-        for col, label, width in zip(cols, ['Группа', 'Тип', 'Разделитель', 'Файлы'], [180, 80, 220, 500]):
+        self.tree = ttk.Treeview(group_inner, columns=cols, show='headings', height=8, selectmode='none')
+        for col, label, width in zip(cols, ['Группа', 'Тип', 'Разделитель', 'Файлы'], [120, 60, 150, 280]):
             self.tree.heading(col, text=label)
-            self.tree.column(col, width=width, minwidth=80)
+            self.tree.column(col, width=width, minwidth=60)
         self.tree.pack(fill='both', expand=True)
         self.tree.bind('<Double-1>', self.open_group_folder_dbl)
 
-        ops = ttk.Frame(frame)
-        ops.pack(fill='x', pady=(0, 6))
-        ttk.Label(ops, text='Папка назначения:').pack(side='left')
+        # Операции
+        ops_card = tk.Frame(right, bg=pal['surface'], highlightbackground=pal['border'], highlightthickness=1, bd=0)
+        ops_card.pack(fill='x')
+        ops_inner = tk.Frame(ops_card, bg=pal['surface'])
+        ops_inner.pack(fill='x', padx=SPACE['3'], pady=SPACE['3'])
+        tk.Label(ops_inner, text='Папка назначения:', bg=pal['surface'], fg=pal['ink'],
+                 font=('Segoe UI', 10, 'bold')).pack(anchor='w', pady=(0, SPACE['2']))
+        dest_row = tk.Frame(ops_inner, bg=pal['surface'])
+        dest_row.pack(fill='x', pady=(0, SPACE['3']))
         self.dest_var = tk.StringVar(value=str(data_dir() / 'photo-out'))
-        ttk.Entry(ops, textvariable=self.dest_var, width=52).pack(side='left', padx=4, fill='x', expand=True)
-        ttk.Button(ops, text='Обзор…', command=self.choose_dest).pack(side='left', padx=4)
+        dest_entry = tk.Entry(dest_row, textvariable=self.dest_var, bg=pal['surface'], fg=pal['ink'],
+                              bd=1, highlightbackground=pal['border'], highlightthickness=1,
+                              font=('Segoe UI', 10))
+        dest_entry.pack(side='left', fill='x', expand=True, padx=(0, SPACE['2']))
+        tk.Button(dest_row, text='Обзор…', command=self.choose_dest, bg=pal['neutral_bg'], fg=pal['neutral_text'],
+                  font=('Segoe UI', 9), bd=0, highlightthickness=0, cursor='hand2', padx=12, pady=6).pack(side='left')
+        # Радиокнопки операции
         self.op_var = tk.StringVar(value=OP_COPY)
-        ttk.Radiobutton(ops, text='Скопировать (исходники остаются)', variable=self.op_var, value=OP_COPY).pack(side='left', padx=(14, 4))
-        ttk.Radiobutton(ops, text='Перенести (удаление после проверенной копии)', variable=self.op_var, value=OP_MOVE).pack(side='left')
+        op_frame = tk.Frame(ops_inner, bg=pal['surface'])
+        op_frame.pack(fill='x', pady=(SPACE['2'], 0))
+        tk.Radiobutton(op_frame, text='Скопировать (исходники остаются)', variable=self.op_var, value=OP_COPY,
+                       bg=pal['surface'], fg=pal['ink'], font=('Segoe UI', 10), selectcolor=pal['surface'],
+                       activebackground=pal['surface'], cursor='hand2').pack(anchor='w', pady=1)
+        tk.Radiobutton(op_frame, text='Перенести (после проверенной копии)', variable=self.op_var, value=OP_MOVE,
+                       bg=pal['surface'], fg=pal['ink'], font=('Segoe UI', 10), selectcolor=pal['surface'],
+                       activebackground=pal['surface'], cursor='hand2').pack(anchor='w', pady=1)
 
-        run_frame = ttk.Frame(frame)
-        run_frame.pack(fill='x', pady=(0, 6))
-        self.run_btn = ttk.Button(run_frame, text='Выполнить операцию', command=self.run_plan)
-        self.run_btn.pack(side='left')
-        ttk.Button(run_frame, text='Открыть папку назначения', command=self.open_dest).pack(side='left', padx=8)
+        # Кнопка выполнения и прогресс
+        run_frame = tk.Frame(right, bg=pal.get('canvas', pal['surface_alt']))
+        run_frame.pack(fill='x', pady=(SPACE['3'], 0))
+        self.run_btn = tk.Button(run_frame, text='Выполнить операцию', command=self.run_plan,
+                                 bg=pal['success_btn'], fg='#ffffff', font=('Segoe UI', 10, 'bold'),
+                                 bd=0, highlightthickness=0, cursor='hand2', padx=16, pady=10)
+        self.run_btn.pack(fill='x')
         self.progress = ttk.Progressbar(run_frame, mode='determinate')
-        self.progress.pack(side='right', fill='x', expand=True, padx=8)
+        self.progress.pack(fill='x', pady=(SPACE['2'], 0))
 
-        self.log = tk.Text(frame, height=7, wrap='word', state='disabled',
-            bg=self.palette['surface'], fg=self.palette['ink'], insertbackground=self.palette['ink'],
-            borderwidth=1, relief='solid', highlightthickness=0)
-        self.log.pack(fill='both', expand=True, pady=(0, 0))
+        # Лог
+        log_card = tk.Frame(right, bg=pal['surface'], highlightbackground=pal['border'], highlightthickness=1, bd=0)
+        log_card.pack(fill='both', expand=True, pady=(SPACE['3'], 0))
+        log_inner = tk.Frame(log_card, bg=pal['surface'])
+        log_inner.pack(fill='both', expand=True, padx=SPACE['3'], pady=SPACE['3'])
+        tk.Label(log_inner, text='Лог операций', bg=pal['surface'], fg=pal['muted'],
+                 font=('Segoe UI', 9, 'bold')).pack(anchor='w', pady=(0, SPACE['2']))
+        self.log = tk.Text(log_inner, height=8, wrap='word', state='disabled',
+            bg=pal['surface'], fg=pal['ink'], insertbackground=pal['ink'],
+            borderwidth=0, highlightthickness=0, font=('Consolas', 9))
+        self.log.pack(fill='both', expand=True)
         self.status = tk.StringVar(value='Готово')
-        ttk.Label(frame, textvariable=self.status).pack(anchor='e')
+        tk.Label(log_inner, textvariable=self.status, bg=pal['surface'], fg=pal['muted'],
+                 font=('Segoe UI', 8)).pack(anchor='e', pady=(SPACE['1'], 0))
 
     def log_msg(self, text):
         self.log.configure(state='normal')
@@ -112,7 +177,7 @@ class PhotoWindow:
 
     def add_files(self):
         paths = filedialog.askopenfilenames(parent=self.win, title='Выберите фотографии',
-                                            filetypes=[('Изображения', '*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp *.webp'),
+                                            filetypes=[('Изображения', '*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.webp'),
                                                        ('Все файлы', '*.*')])
         if paths:
             self.files.extend(Path(p) for p in paths)
@@ -160,11 +225,8 @@ class PhotoWindow:
         total = len(self.files)
 
         def work():
-            done = [0]
-
             def progress(frac):
                 self.win.after(0, lambda: self._classify_progress(frac))
-
             try:
                 from config import settings, worker_config
                 cfg = worker_config(settings())
@@ -172,7 +234,6 @@ class PhotoWindow:
                 self.win.after(0, lambda: self._classify_finished(classifications))
             except Exception as exc:
                 self.win.after(0, lambda: self._classify_failed(str(exc)))
-
         threading.Thread(target=work, daemon=True).start()
 
     def _classify_progress(self, frac):
@@ -251,7 +312,6 @@ class PhotoWindow:
                 self.win.after(0, lambda: self._run_finished(done, failed))
             except Exception as exc:
                 self.win.after(0, lambda: self._run_failed(str(exc)))
-
         threading.Thread(target=work, daemon=True).start()
 
     def _run_progress(self, done, failed, total):
