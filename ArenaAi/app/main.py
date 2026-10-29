@@ -3,7 +3,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk,filedialog,messagebox
 from config import ROOT,VERSION,PROFILES,settings,worker_config,auto_profile,atomic_json,data_dir,stamp
-from theme import apply_theme, DEFAULT_THEME, THEME_LABELS, stat_card, status_badge, make_card, make_section, divider, apply_palette_to_widget
+from theme import apply_theme, DEFAULT_THEME, THEME_LABELS, STATE_THEME, stat_card, status_badge, make_card, make_section, divider, apply_palette_to_widget
 from storage import Store,AppLock,EXTENSIONS,LABELS
 from engine import Engine
 from platform_ui import app_identity,icon,open_path,copy_files
